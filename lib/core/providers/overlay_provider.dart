@@ -1,11 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
+import '../services/ocr_service.dart';
 import '../services/screen_capture_service.dart';
 
 class OverlayProvider extends ChangeNotifier {
   bool _isOverlayActive = false;
   bool get isOverlayActive => _isOverlayActive;
+  
+  // OverlayProvider() {
+  //   FlutterOverlayWindow.overlayListener.listen((event) async {
+  //     // If the overlay radios us saying "capture":
+  //     if (event is Map && event['action'] == 'capture') {
+        
+  //       // 1. Take the screenshot (Main App does this safely)
+  //       final bytes = await ScreenCaptureService.captureScreen();
+        
+  //       if (bytes != null) {
+  //         // 2. Extract the text
+  //         final text = await OcrService.extractText(bytes);
+          
+  //         // 3. Radio the text BACK to the Overlay
+  //         FlutterOverlayWindow.shareData({'action': 'result', 'text': text});
+  //       } else {
+  //         // Tell overlay it failed
+  //         FlutterOverlayWindow.shareData({'action': 'error'});
+  //       }
+  //     }
+  //   });
+  // }
 
 Future<void> startOverlay() async {
     try {
