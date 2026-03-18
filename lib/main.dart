@@ -1,42 +1,37 @@
 import 'package:flutter/material.dart';
-// import 'package:flutter/services.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:provider/provider.dart';
 import 'package:screen_reader/core/helpers/colors.dart';
 import 'core/helpers/theme_helper.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/providers/overlay_provider.dart';
-// import 'core/services/ocr_service.dart';
-// import 'core/services/screen_capture_service.dart';
 import 'core/services/ocr_service.dart';
 import 'core/services/screen_capture_service.dart';
 import 'features/homeScreen.dart';
 
-void main() {
+// --- NEW: THE UNSTOPPABLE BACKGROUND ENGINE ---
+@pragma("vm:entry-point")
+void backgroundMain() {
   WidgetsFlutterBinding.ensureInitialized();
-  // --- THE INDESTRUCTIBLE GLOBAL LISTENER (Main App Side) ---
+  
   FlutterOverlayWindow.overlayListener.listen((event) async {
-    // Safely cast the event to a map to avoid background type errors
-    if (event is Map) {
-      final String action = event['action'].toString();
+    if (event is Map && event['action'] == 'capture') {
+      debugPrint("🤖 BACKGROUND ENGINE: Taking screenshot...");
       
-      if (action == 'capture') {
-        debugPrint("🤖 MAIN APP RECEIVED CAPTURE COMMAND! Taking screenshot..."); // <-- Add this
-        // 1. Take the screenshot safely
-        final bytes = await ScreenCaptureService.captureScreen();
-        
-        if (bytes != null) {
-          // 2. Extract the text
-          final text = await OcrService.extractText(bytes);
-          // 3. Radio the text BACK to the Overlay
-          FlutterOverlayWindow.shareData({'action': 'result', 'text': text});
-        } else {
-          // Tell overlay it failed
-          FlutterOverlayWindow.shareData({'action': 'error'});
-        }
+      final bytes = await ScreenCaptureService.captureScreen();
+      
+      if (bytes != null) {
+        final text = await OcrService.extractText(bytes);
+        FlutterOverlayWindow.shareData({'action': 'result', 'text': text});
+      } else {
+        FlutterOverlayWindow.shareData({'action': 'error'});
       }
     }
   });
+}
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(
     MultiProvider(
       providers: [
@@ -57,35 +52,8 @@ void overlayMain() {
   ));
 }
 
-// class OverlayContentWidget extends StatelessWidget {
-//   const OverlayContentWidget({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     // This is where your floating icon/extracted text logic goes
-//     return Material(
-//       color: Colors.transparent,
-//       child: GestureDetector(
-//         onTap: () async {
-//           // Logic to switch between scanner icon and mic icon
-//           // await FlutterOverlayWindow.closeOverlay();
-//         },
-//         onDoubleTap: () => {},// Logic to open translation screen or perform translation
-//         child: Container(
-//           width: 120,
-//           height: 120,
-//           decoration:
-//               const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-//           child: const Icon(Icons.qr_code_scanner, color: Colors.white),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
@@ -104,26 +72,25 @@ class MyApp extends StatelessWidget {
 
 class OverlayContentWidget extends StatefulWidget {
   const OverlayContentWidget({super.key});
-
   @override
   State<OverlayContentWidget> createState() => _OverlayContentWidgetState();
 }
+
 class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   bool isProcessing = false;
   bool showText = false;
   String extractedText = "";
 
-@override
+  @override
   void initState() {
     super.initState();
     FlutterOverlayWindow.overlayListener.listen((event) async {
       if (event is Map) {
         final String action = event['action'].toString();
         
-        // 1. IGNORE OUR OWN ECHO!
+        // Ignore our own echo!
         if (action == 'capture') return; 
-
-        // 2. Handle the successful text extraction
+        
         if (action == 'result') {
           setState(() {
             extractedText = event['text'].toString();
@@ -131,12 +98,10 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
             isProcessing = false;
           });
           await FlutterOverlayWindow.resizeOverlay(350, 500, true);
-        } 
-        // 3. Handle errors or timeouts smoothly
-        else if (action == 'error') {
+        } else if (action == 'error') {
           setState(() {
             isProcessing = false;
-            extractedText = "Failed to capture. Please scroll or tap the screen to wake it up, then try again.";
+            extractedText = "Failed to capture. Please try again.";
             showText = true;
           });
           await FlutterOverlayWindow.resizeOverlay(350, 200, true);
@@ -144,20 +109,14 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
       }
     });
   }
+
   void _performCaptureAndOcr() {
-    setState(() {
-      isProcessing = true;
-    });
-    // Send message to Main App: "Take a screenshot!"
+    setState(() { isProcessing = true; });
     FlutterOverlayWindow.shareData({'action': 'capture'});
   }
 
   void _closeTextWindow() async {
-    setState(() {
-      showText = false;
-      extractedText = "";
-    });
-    // Shrink the window back to the small circle
+    setState(() { showText = false; extractedText = ""; });
     await FlutterOverlayWindow.resizeOverlay(120, 120, true);
   }
 
@@ -165,9 +124,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      child: showText 
-        ? _buildTextResultCard() 
-        : _buildScannerButton(),
+      child: showText ? _buildTextResultCard() : _buildScannerButton(),
     );
   }
 
@@ -175,11 +132,9 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
     return GestureDetector(
       onDoubleTap: isProcessing ? null : _performCaptureAndOcr,
       child: Container(
-        width: 120,
-        height: 120,
+        width: 120, height: 120,
         decoration: const BoxDecoration(
-          color: AppColors.primary, 
-          shape: BoxShape.circle,
+          color: AppColors.primary, shape: BoxShape.circle,
           boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
         ),
         child: isProcessing 
@@ -192,8 +147,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   Widget _buildTextResultCard() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        color: Colors.white, borderRadius: BorderRadius.circular(15),
         border: Border.all(color: AppColors.primary, width: 2),
         boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
       ),
@@ -201,30 +155,19 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-            ),
+            decoration: const BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text("Extracted Text", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: _closeTextWindow,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                )
+                IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: _closeTextWindow, padding: EdgeInsets.zero, constraints: const BoxConstraints())
               ],
             ),
           ),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
-              child: Text(
-                extractedText.isEmpty ? "No text found on screen." : extractedText,
-                style: const TextStyle(color: Colors.black, fontSize: 16),
-              ),
+              child: Text(extractedText.isEmpty ? "No text found on screen." : extractedText, style: const TextStyle(color: Colors.black, fontSize: 16)),
             ),
           ),
         ],
@@ -232,4 +175,3 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
     );
   }
 }
-
