@@ -102,29 +102,34 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
 
   // ---------- FULL OVERLAY ----------
   Widget _buildFullOverlay() {
-    // This is the magic ratio between Camera Physical Pixels and Flutter Logical Pixels
-    final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+    //exemple of my phone resolution is 1440x2960 
+    //and pixel ratio is 4.3, so we need to divide the coordinates by 4.3 
+    //to get the correct position on the overlay, 
+    //but I found that the text is slightly off, 
+    //so I subtracted a small value from the pixel ratio to adjust it, 
+    //this is a common practice when dealing with different screen densities and resolutions in Flutter.
+    final pixelRatio = MediaQuery.of(context).devicePixelRatio-0.09;
 
     return Stack(
       children: [
         // WORDS
         ...words.map((w) {
-          final x = (w['x'] as num).toDouble() / pixelRatio;
-          final y = (w['y'] as num).toDouble() / pixelRatio;
-          final width = (w['w'] as num).toDouble() / pixelRatio;
-          final height = (w['h'] as num).toDouble() / pixelRatio;
+          final x = (w['x'] as num).toDouble() / pixelRatio -8;
+          final y = (w['y'] as num).toDouble() / pixelRatio-15;
+          final width = (w['w'] as num).toDouble() / pixelRatio+6;
+          final height = (w['h'] as num).toDouble() / pixelRatio+6;
 
           return Positioned(
             left: x,
             top: y,
-            width: width,   // Constrain the box to the exact width ML Kit found
-            height: height, // Constrain the box to the exact height ML Kit found
+            width: width,   
+            height: height, 
             child: GestureDetector(
               onTap: () => _showWordDetail(w['text']),
               child: Container(
-                color: Colors.white, // Solid white background
+                color: Colors.white,
                 child: FittedBox(
-                  fit: BoxFit.contain, // Stretches/shrinks text to fill the exact box size!
+                  fit: BoxFit.contain, 
                   child: Text(
                     w['text'],
                     style: TextStyle( color: Colors.black, fontWeight: FontWeight.bold,),
