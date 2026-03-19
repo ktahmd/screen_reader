@@ -51,7 +51,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
 
   void _closeTextWindow() async {
     setState(() { showText = false; extractedText = ""; });
-    await FlutterOverlayWindow.resizeOverlay(120, 120, true);
+    await FlutterOverlayWindow.resizeOverlay(40, 40, true);
   }
 
   @override
@@ -66,14 +66,13 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
     return GestureDetector(
       onDoubleTap: isProcessing ? null : _performCaptureAndOcr,
       child: Container(
-        width: 120, height: 120,
         decoration: const BoxDecoration(
           color: AppColors.primary, shape: BoxShape.circle,
           boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
         ),
         child: isProcessing 
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
-          : const Icon(Icons.qr_code_scanner, color: Colors.white, size: 50),
+          : const Icon(Icons.remove_red_eye, color: Colors.white),
       ),
     );
   }

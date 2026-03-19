@@ -15,6 +15,9 @@ class MainActivity: FlutterActivity() {
     private val REQUEST_CODE = 100
     private var pendingResult: MethodChannel.Result? = null
 
+    // This keeps the Flutter Engine from being destroyed when the app is swiped
+    override fun shouldDestroyEngineWithHost(): Boolean = false
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -32,6 +35,7 @@ class MainActivity: FlutterActivity() {
                     startActivityForResult(mediaProjectionManager?.createScreenCaptureIntent(), REQUEST_CODE)
                 }
                 "stopProjection" -> {
+                    ScreenCaptureManager.stopProjection()
                     val serviceIntent = Intent(this, ScreenCaptureForegroundService::class.java)
                     stopService(serviceIntent)
                     result.success(true)
@@ -44,7 +48,7 @@ class MainActivity: FlutterActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == REQUEST_CODE) {
             if (resultCode == Activity.RESULT_OK && data != null) {
-                // Pass the projection to our indestructible Manager!
+                // STORE TOKEN IN THE GLOBAL MANAGER
                 ScreenCaptureManager.mediaProjection = mediaProjectionManager?.getMediaProjection(resultCode, data)
                 pendingResult?.success(true) 
             } else {
