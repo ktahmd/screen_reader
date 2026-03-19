@@ -34,8 +34,8 @@ void backgroundMain() {
             try {
               final bytes = await ScreenCaptureService.captureScreen();
               if (bytes != null) {
-                final text = await OcrService.extractText(bytes);
-                FlutterOverlayWindow.shareData({'action': 'result', 'text': text});
+                final wordData = await OcrService.extractTextDetailed(bytes);
+                FlutterOverlayWindow.shareData({'action': 'result', 'words': wordData});
               } else {
                 FlutterOverlayWindow.shareData({'action': 'error'});
               }
