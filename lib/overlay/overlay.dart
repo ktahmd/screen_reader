@@ -14,9 +14,6 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   List<dynamic> words = [];
   String? errorCode;
 
-  double imgW = 1;
-  double imgH = 1;
-
   @override
   void initState() {
     super.initState();
@@ -26,12 +23,8 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
         final action = event['action'];
 
         if (action == 'result') {
-          final data = event['data'];
-
           setState(() {
-            words = data['words'] as List<dynamic>;
-            imgW = (data['imgW'] as num).toDouble();
-            imgH = (data['imgH'] as num).toDouble();
+            words = event['words'] as List<dynamic>;
             showWords = true;
             isProcessing = false;
             errorCode = null;
@@ -97,11 +90,8 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
             ),
             child: isProcessing
                 ? const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 3,
-                    ),
+                    padding: EdgeInsets.all(12),
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
                   )
                 : const Icon(Icons.remove_red_eye, color: Colors.white),
           ),
@@ -112,33 +102,32 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
 
   // ---------- FULL OVERLAY ----------
   Widget _buildFullOverlay() {
-    final screenW = MediaQuery.of(context).size.width;
-    final screenH = MediaQuery.of(context).size.height;
-
-    final scaleX = screenW / imgW;
-    final scaleY = screenH / imgH;
+    // This is the magic ratio between Camera Physical Pixels and Flutter Logical Pixels
+    final pixelRatio = MediaQuery.of(context).devicePixelRatio;
 
     return Stack(
       children: [
         // WORDS
         ...words.map((w) {
-          final x = (w['x'] as num).toDouble();
-          final y = (w['y'] as num).toDouble();
-          final h = (w['h'] as num).toDouble();
+          final x = (w['x'] as num).toDouble() / pixelRatio;
+          final y = (w['y'] as num).toDouble() / pixelRatio;
+          final width = (w['w'] as num).toDouble() / pixelRatio;
+          final height = (w['h'] as num).toDouble() / pixelRatio;
 
           return Positioned(
-            left: x * scaleX,
-            top: y * scaleY,
+            left: x,
+            top: y,
+            width: width,   // Constrain the box to the exact width ML Kit found
+            height: height, // Constrain the box to the exact height ML Kit found
             child: GestureDetector(
               onTap: () => _showWordDetail(w['text']),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-                color: Colors.white,
-                child: Text(
-                  w['text'],
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: h * scaleY * 0.8,
+                color: Colors.white, // Solid white background
+                child: FittedBox(
+                  fit: BoxFit.contain, // Stretches/shrinks text to fill the exact box size!
+                  child: Text(
+                    w['text'],
+                    style: TextStyle( color: Colors.black, fontWeight: FontWeight.bold,),
                   ),
                 ),
               ),
@@ -146,18 +135,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
           );
         }),
 
-        // TOP CARD
-        // Positioned(
-        //   top: 40,
-        //   left: 20,
-        //   right: 20,
-        //   child: SizedBox(
-        //     height: 250,
-        //     child: _buildTextResultCard(),
-        //   ),
-        // ),
-
-        // CONTROL BAR
+        // CONTROL BAR (Mic and Close)
         Positioned(
           bottom: 50,
           left: 0,
@@ -168,21 +146,20 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(30),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black45, blurRadius: 10)
-                ],
+                boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 10)],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
                     icon: const Icon(Icons.mic, color: Colors.white, size: 30),
-                    onPressed: () {},
+                    onPressed: () {
+                      // Placeholder for TTS
+                    },
                   ),
                   const SizedBox(width: 20),
                   IconButton(
-                    icon:
-                        const Icon(Icons.close, color: Colors.white, size: 30),
+                    icon: const Icon(Icons.close, color: Colors.white, size: 30),
                     onPressed: _closeOverlay,
                   ),
                 ],
@@ -196,60 +173,6 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
     );
   }
 
-  // ---------- CARD ----------
-  // Widget _buildTextResultCard() {
-  //   final fullText = words.map((e) => e['text']).join(' ');
-
-  //   return Container(
-  //   decoration: BoxDecoration(
-  //     color: Colors.white,
-  //     borderRadius: BorderRadius.circular(15),
-  //     border: Border.all(color: AppColors.primary, width: 2),
-  //     boxShadow: const [
-  //       BoxShadow(color: Colors.black26, blurRadius: 10)
-  //     ],
-  //   ),
-  //   child: Column(
-  //     children: [
-  //       Container(
-  //         padding:
-  //             const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-  //         decoration: const BoxDecoration(
-  //           color: AppColors.primary,
-  //           borderRadius:
-  //               BorderRadius.vertical(top: Radius.circular(12)),
-  //         ),
-  //         child: Row(
-  //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //           children: [
-  //             const Text("Extracted Text",
-  //                 style: TextStyle(
-  //                     color: Colors.white,
-  //                     fontWeight: FontWeight.bold)),
-  //             IconButton(
-  //               icon: const Icon(Icons.close, color: Colors.white),
-  //               onPressed: _closeOverlay,
-  //             )
-  //           ],
-  //         ),
-  //       ),
-  //       Expanded(
-  //         child: SingleChildScrollView(
-  //           padding: const EdgeInsets.all(16),
-  //           child: Text(
-  //             fullText.isEmpty
-  //                 ? "No text found on screen."
-  //                 : fullText,
-  //             style:
-  //                 const TextStyle(color: Colors.black, fontSize: 16),
-  //           ),
-  //         ),
-  //       ),
-  //     ],
-  //   ),
-  // );
-  // }
-
   void _showWordDetail(String word) {
     debugPrint("Clicked: $word");
   }
@@ -257,64 +180,57 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   Widget _buildErrorCard() {
     return Center(
       child: Container(
-        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(15)),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: AppColors.error, width: 2),
-            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: const BoxDecoration(
-                  color: AppColors.error,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("Error",
-                        style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold)),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: _closeOverlay,
-                    )
-                  ],
-                ),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: AppColors.error, width: 2),
+          boxShadow: const [
+            BoxShadow(color: Colors.black26, blurRadius: 10)
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: const BoxDecoration(
+                color: AppColors.error,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
               ),
-              Row(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        "Permission lost. Tap to Restore Access",
-                        style:
-                            const TextStyle(color: Colors.black, fontSize: 16),
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      FlutterOverlayWindow.shareData(
-                          {'action': 'open_app_request'});
-                      _closeOverlay();
-                    },
-                    child: const Text("Fix Permission"),
-                  ),
+                  const Text("Error",
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold)),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: _closeOverlay,
+                  )
                 ],
               ),
-            ],
-          ),
+            ),
+
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                "Permission lost. Tap to Restore Access",
+                style: TextStyle(color: Colors.black, fontSize: 16),
+              ),
+            ),
+
+            TextButton(
+              onPressed: () {
+                FlutterOverlayWindow.shareData({'action': 'open_app_request'});
+                _closeOverlay();
+              },
+              child: const Text("Fix Permission"),
+            ),
+          ],
         ),
       ),
     );
   }
+
 }
