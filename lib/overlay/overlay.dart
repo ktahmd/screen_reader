@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
 import '../core/helpers/colors.dart';
+import '../core/services/screen_capture_service.dart';
 
 class OverlayContentWidget extends StatefulWidget {
   const OverlayContentWidget({super.key});
@@ -14,6 +15,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   bool isProcessing = false;
   bool showText = false;
   String extractedText = "";
+  String? errorCode; 
 
   @override
   void initState() {
@@ -30,22 +32,32 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
             extractedText = event['text'].toString();
             showText = true;
             isProcessing = false;
+            errorCode = null;
           });
           await FlutterOverlayWindow.resizeOverlay(350, 500, true);
         } else if (action == 'error') {
-          setState(() {
-            isProcessing = false;
-            extractedText = "Failed to capture. Please try again.";
-            showText = true;
-          });
-          await FlutterOverlayWindow.resizeOverlay(350, 200, true);
-        }
+            errorCode = event['errorCode']?.toString();
+              
+              setState(() {
+                isProcessing = false;
+                if (errorCode == 'NEED_PERMISSION') {
+                  extractedText = "Permission lost. Please tap to restore access.";
+                  
+                } else {
+                  extractedText = "An error occurred. Please try again.";
+                }
+                showText = true;
+              });
+              await FlutterOverlayWindow.resizeOverlay(350, 250, true);
+          }
+          
       }
     });
   }
 
+
   void _performCaptureAndOcr() {
-    setState(() { isProcessing = true; });
+    setState(() { isProcessing = true; errorCode = null; });
     FlutterOverlayWindow.shareData({'action': 'capture'});
   }
 
@@ -100,7 +112,21 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
-              child: Text(extractedText.isEmpty ? "No text found on screen." : extractedText, style: const TextStyle(color: Colors.black, fontSize: 16)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(extractedText.isEmpty ? "No text found on screen." : extractedText, style: const TextStyle(color: Colors.black, fontSize: 16)),
+                  if (errorCode == 'NEED_PERMISSION')
+                    TextButton(
+                      onPressed: () {
+                        FlutterOverlayWindow.shareData({'action': 'open_app_request'});
+                        _closeTextWindow(); 
+                      },
+                      child: const Text("Permission lost. Click here to fix.", 
+                        style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
             ),
           ),
         ],

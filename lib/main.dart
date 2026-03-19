@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:provider/provider.dart';
 import 'core/helpers/theme_helper.dart';
@@ -8,23 +9,64 @@ import 'core/services/ocr_service.dart';
 import 'core/services/screen_capture_service.dart';
 import 'features/homeScreen.dart';
 import 'overlay/overlay.dart';
+import 'dart:async';
 
-// --- BACKGROUND ENGINE ---
+/// Entry point for the background isolate used by the overlay window.
+/// 
+/// This function listens for overlay events and handles actions such as
+/// screen capture, OCR processing, and communication with the main app.
+/// It is marked with `@pragma("vm:entry-point")` to ensure it can be invoked
+/// by the Flutter engine in a background context.
 @pragma("vm:entry-point")
 void backgroundMain() {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  FlutterOverlayWindow.overlayListener.listen((event) async {
-    if (event is Map && event['action'] == 'capture') {
-      debugPrint("🤖 BACKGROUND ENGINE: Taking screenshot...");
-      
-      final bytes = await ScreenCaptureService.captureScreen();
-      
-      if (bytes != null) {
-        final text = await OcrService.extractText(bytes);
-        FlutterOverlayWindow.shareData({'action': 'result', 'text': text});
-      } else {
-        FlutterOverlayWindow.shareData({'action': 'error'});
+
+  // Store the subscription so it can be cancelled if needed
+  StreamSubscription? overlaySubscription;
+
+  overlaySubscription = FlutterOverlayWindow.overlayListener.listen((event) async {
+    if (event is Map) {
+      final action = event['action'];
+      if (action is String) {
+        switch (action) {
+          case 'capture':
+            debugPrint("🤖 BACKGROUND ENGINE: Taking screenshot...");
+            try {
+              final bytes = await ScreenCaptureService.captureScreen();
+              if (bytes != null) {
+                final text = await OcrService.extractText(bytes);
+                FlutterOverlayWindow.shareData({'action': 'result', 'text': text});
+              } else {
+                FlutterOverlayWindow.shareData({'action': 'error'});
+              }
+            } on PlatformException catch (e) {
+              FlutterOverlayWindow.shareData({
+                'action': 'error',
+                'errorCode': e.code,
+              });
+            } catch (e) {
+              debugPrint("❌ BACKGROUND ENGINE ERROR: $e");
+              FlutterOverlayWindow.shareData(
+                  {'action': 'error', 'errorCode': e.toString()});
+            }
+            break;
+          case 'open_app_request':
+            try {
+              await ScreenCaptureService.openApp();
+            } catch (e) {
+              debugPrint("❌ BACKGROUND ENGINE ERROR (openApp): $e");
+              FlutterOverlayWindow.shareData(
+                  {'action': 'error', 'errorCode': e.toString()});
+            }
+            break;
+          case 'dispose_listener':
+            // Example: cancel the subscription if a dispose action is received
+            await overlaySubscription?.cancel();
+            overlaySubscription = null;
+            break;
+          default:
+            // optional: handle unknown actions
+        }
       }
     }
   });
@@ -42,7 +84,7 @@ void main() {
         builder: (context, themeProvider, child) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
-            themeMode: themeProvider.themeMode, 
+            themeMode: themeProvider.themeMode,
             theme: appTheme(Brightness.light),
             darkTheme: appTheme(Brightness.dark),
             home: const HomeScreen(),
@@ -61,5 +103,3 @@ void overlayMain() {
     home: OverlayContentWidget(),
   ));
 }
-
-

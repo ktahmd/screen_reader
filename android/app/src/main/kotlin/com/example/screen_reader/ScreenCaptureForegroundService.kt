@@ -30,22 +30,42 @@ object ScreenCaptureManager {
 
     fun captureScreen(result: MethodChannel.Result) {
         val projection = mediaProjection
-        if (projection == null) {
-            result.error("NO_PERMISSION", "MediaProjection token is null. Did you swipe close the app?", null)
-            return
-        }
+            if (projection == null) {
+                result.error("NEED_PERMISSION", "Permission lost", null)
+                return
+            }
 
-        val metrics = Resources.getSystem().displayMetrics
-        val width = metrics.widthPixels
-        val height = metrics.heightPixels
-        val density = metrics.densityDpi
+            // REGISTER CALLBACK to detect if the token dies from the outside
+            projection.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    super.onStop()
+                    mediaProjection = null // Token is dead, clear it
+                }
+            }, Handler(Looper.getMainLooper()))
 
-        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
-        virtualDisplay = projection.createVirtualDisplay(
-            "ScreenCapture", width, height, density,
-            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            imageReader?.surface, null, null
-        )
+            val metrics = Resources.getSystem().displayMetrics
+            val width = metrics.widthPixels
+            val height = metrics.heightPixels
+            val density = metrics.densityDpi
+
+            imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+            
+            try {
+                // THIS IS WHERE THE ERROR HAPPENS if another app is capturing
+                virtualDisplay = projection.createVirtualDisplay(
+                    "ScreenCapture", width, height, density,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    imageReader?.surface, null, null
+                )
+            } catch (e: SecurityException) {
+                // ANOTHER APP TOOK CONTROL
+                mediaProjection = null 
+                result.error("PROJECTION_REVOKED", "Another app is using screen capture. Please restart the power button.", null)
+                return
+            } catch (e: Exception) {
+                result.error("ERROR", e.message, null)
+                return
+            }
 
         var captureHandled = false
         val handler = Handler(Looper.getMainLooper())
@@ -106,9 +126,17 @@ class ScreenCaptureForegroundService : Service() {
         io.flutter.plugins.GeneratedPluginRegistrant.registerWith(flutterEngine!!)
 
         MethodChannel(flutterEngine!!.dartExecutor.binaryMessenger, "com.screen_reader/capture").setMethodCallHandler { call, result ->
-            if (call.method == "captureScreen") {
-                ScreenCaptureManager.captureScreen(result)
+            when (call.method) {
+            "captureScreen" -> ScreenCaptureManager.captureScreen(result)
+            "openApp" -> {
+                // This code works inside a Service too!
+                val intent = Intent(applicationContext, MainActivity::class.java)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                result.success(true)
             }
+            else -> result.notImplemented()
+        }
         }
 
         val loader = FlutterInjector.instance().flutterLoader()

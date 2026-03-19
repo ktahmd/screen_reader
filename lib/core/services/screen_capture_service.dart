@@ -16,13 +16,12 @@ class ScreenCaptureService {
   }
 
   static Future<Uint8List?> captureScreen() async {
-    try {
       final Uint8List? imageBytes = await _channel.invokeMethod('captureScreen');
       return imageBytes;
-    } on PlatformException catch (e) {
-      debugPrint("Failed to capture screen: '${e.message}'.");
-      return null;
-    }
+
+  }
+  static Future<void> openApp() async {
+    await _channel.invokeMethod('openApp');
   }
 
    static Future<void> stopProjection() async {
