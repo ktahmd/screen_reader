@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import '../core/helpers/colors.dart';
+import '../core/services/translator_service.dart';
 
 class OverlayContentWidget extends StatefulWidget {
   const OverlayContentWidget({super.key});
@@ -13,11 +14,14 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   bool showWords = false;
   List<dynamic> words = [];
   String? errorCode;
+  Set<int> selectedWordIndices = {};
+  String currentOriginalText = "";
+  String currentTranslatedText = "";
+  bool isTranslating = false;
 
   @override
   void initState() {
     super.initState();
-
     FlutterOverlayWindow.overlayListener.listen((event) async {
       if (event is Map) {
         final action = event['action'];
@@ -28,6 +32,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
             showWords = true;
             isProcessing = false;
             errorCode = null;
+            _clearSelection(); 
           });
           await FlutterOverlayWindow.moveOverlay(const OverlayPosition(0, 0));
           await FlutterOverlayWindow.resizeOverlay(-1, -1, false);
@@ -49,8 +54,8 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
     setState(() {
       isProcessing = true;
       errorCode = null;
+      _clearSelection();
     });
-
     FlutterOverlayWindow.shareData({'action': 'capture'});
   }
 
@@ -59,9 +64,53 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
       showWords = false;
       words = [];
       errorCode = null;
+      _clearSelection();
+    });
+    await FlutterOverlayWindow.resizeOverlay(120, 120, true);
+  }
+
+  void _toggleWordSelection(int index) async {
+    setState(() {
+      if (selectedWordIndices.contains(index)) {
+        selectedWordIndices.remove(index);
+      } else {
+        selectedWordIndices.add(index);
+      }
     });
 
-    await FlutterOverlayWindow.resizeOverlay(120, 120, true);
+    if (selectedWordIndices.isEmpty) {
+      setState(() {
+        currentOriginalText = "";
+        currentTranslatedText = "";
+      });
+      return;
+    }
+
+    final sortedIndices = selectedWordIndices.toList()..sort();
+    final combinedText = sortedIndices.map((i) => words[i]['text']).join(" ");
+
+    setState(() {
+      currentOriginalText = combinedText;
+      isTranslating = true;
+    });
+
+    final translated = await TranslationService.translateText(combinedText, from: 'en', to: 'ar');
+
+    if (selectedWordIndices.isNotEmpty) {
+      setState(() {
+        currentTranslatedText = translated;
+        isTranslating = false;
+      });
+    }
+  }
+
+  void _clearSelection() {
+    setState(() {
+      selectedWordIndices.clear();
+      currentOriginalText = "";
+      currentTranslatedText = "";
+      isTranslating = false;
+    });
   }
 
   @override
@@ -72,27 +121,21 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
     );
   }
 
-  // ---------- BUTTON ----------
   Widget _buildButton() {
     return SizedBox(
-      width: 60,
-      height: 60,
+      width: 60, height: 60,
       child: Center(
         child: GestureDetector(
           onDoubleTap: isProcessing ? null : _performCapture,
           child: Container(
-            width: 40,
-            height: 40,
+            width: 40, height: 40,
             decoration: const BoxDecoration(
               color: AppColors.primary,
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
             ),
             child: isProcessing
-                ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                  )
+                ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
                 : const Icon(Icons.remove_red_eye, color: Colors.white),
           ),
         ),
@@ -100,7 +143,6 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
     );
   }
 
-  // ---------- FULL OVERLAY ----------
   Widget _buildFullOverlay() {
     //exemple of my phone resolution is 1440x2960 
     //and pixel ratio is 4.3, so we need to divide the coordinates by 4.3 
@@ -108,31 +150,42 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
     //but I found that the text is slightly off, 
     //so I subtracted a small value from the pixel ratio to adjust it, 
     //this is a common practice when dealing with different screen densities and resolutions in Flutter.
-    final pixelRatio = MediaQuery.of(context).devicePixelRatio-0.09;
+    //TODO: In future, we can make this adjustment dynamic by testing on multiple devices and finding the optimal value or formula for it.
+    final pixelRatio = MediaQuery.of(context).devicePixelRatio - 0.09;
 
     return Stack(
       children: [
-        // WORDS
-        ...words.map((w) {
-          final x = (w['x'] as num).toDouble() / pixelRatio -8;
-          final y = (w['y'] as num).toDouble() / pixelRatio-15;
-          final width = (w['w'] as num).toDouble() / pixelRatio+6;
-          final height = (w['h'] as num).toDouble() / pixelRatio+6;
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: _clearSelection,
+            child: Container(color: Colors.transparent),
+          ),
+        ),
+
+        ...words.asMap().entries.map((entry) {
+          final int index = entry.key;
+          final Map<String, dynamic> w = entry.value;
+          final bool isSelected = selectedWordIndices.contains(index);
+
+          final x = (w['x'] as num).toDouble() / pixelRatio - 8;
+          final y = (w['y'] as num).toDouble() / pixelRatio - 15;
+          final width = (w['w'] as num).toDouble() / pixelRatio + 6;
+          final height = (w['h'] as num).toDouble() / pixelRatio + 6;
 
           return Positioned(
-            left: x,
-            top: y,
-            width: width,   
-            height: height, 
+            left: x, top: y, width: width, height: height,
             child: GestureDetector(
-              onTap: () => _showWordDetail(w['text']),
+              onTap: () => _toggleWordSelection(index),
               child: Container(
-                color: Colors.white,
+                color: isSelected ? AppColors.primary.withOpacity(0.9) : Colors.white,
                 child: FittedBox(
-                  fit: BoxFit.contain, 
+                  fit: BoxFit.contain,
                   child: Text(
                     w['text'],
-                    style: TextStyle( color: Colors.black, fontWeight: FontWeight.bold,),
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black, 
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -140,11 +193,16 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
           );
         }),
 
-        // CONTROL BAR (Mic and Close)
+
+        if (selectedWordIndices.isNotEmpty)
+          Positioned(
+            bottom: 120, 
+            left: 20, right: 20,
+            child: _buildTranslationPopup(),
+          ),
+
         Positioned(
-          bottom: 50,
-          left: 0,
-          right: 0,
+          bottom: 50, left: 0, right: 0,
           child: Center(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -158,9 +216,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.mic, color: Colors.white, size: 30),
-                    onPressed: () {
-                      // Placeholder for TTS
-                    },
+                    onPressed: () { /* Placeholder for TTS */ },
                   ),
                   const SizedBox(width: 20),
                   IconButton(
@@ -178,8 +234,33 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
     );
   }
 
-  void _showWordDetail(String word) {
-    debugPrint("Clicked: $word");
+  Widget _buildTranslationPopup() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: AppColors.primary, width: 2),
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min, 
+        children: [
+          Text(
+            currentOriginalText,
+            style: const TextStyle(fontSize: 16, color: Colors.black54, fontWeight: FontWeight.bold),
+          ),
+          const Divider(height: 20, thickness: 1),
+          isTranslating
+              ? const Center(child: CircularProgressIndicator())
+              : Text(
+                  currentTranslatedText,
+                  style: const TextStyle(fontSize: 18, color: Colors.black, fontWeight: FontWeight.bold),
+                ),
+        ],
+      ),
+    );
   }
 
   Widget _buildErrorCard() {
