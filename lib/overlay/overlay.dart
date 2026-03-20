@@ -18,6 +18,9 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   String currentOriginalText = "";
   String currentTranslatedText = "";
   bool isTranslating = false;
+  Offset? dragStart;
+  Offset? dragCurrent;
+  Set<int> dragSelectedIndices = {};
 
   @override
   void initState() {
@@ -80,8 +83,56 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
     _processSelection();
   }
 
+  void _onPanStart(DragStartDetails details) {
+    setState(() {
+      dragStart = details.localPosition;
+      dragCurrent = details.localPosition;
+      dragSelectedIndices.clear();
+    });
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    setState(() {
+      dragCurrent = details.localPosition;
+    });
+
+    if (dragStart != null && dragCurrent != null) {
+      final selectionRect = Rect.fromPoints(dragStart!, dragCurrent!);
+      final pixelRatio = MediaQuery.of(context).devicePixelRatio - 0.09;
+      
+      Set<int> tempDragSelection = {};
+
+      for (int i = 0; i < words.length; i++) {
+        final w = words[i];
+        final x = (w['x'] as num).toDouble() / pixelRatio - 8;
+        final y = (w['y'] as num).toDouble() / pixelRatio - 15;
+        final width = (w['w'] as num).toDouble() / pixelRatio + 6;
+        final height = (w['h'] as num).toDouble() / pixelRatio + 6;
+
+        final wordRect = Rect.fromLTWH(x, y, width, height);
+
+        if (selectionRect.overlaps(wordRect)) {
+          tempDragSelection.add(i);
+        }
+      }
+
+      setState(() {
+        dragSelectedIndices = tempDragSelection;
+      });
+    }
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    setState(() {
+      selectedWordIndices.addAll(dragSelectedIndices);
+      dragStart = null;
+      dragCurrent = null;
+      dragSelectedIndices.clear();
+    });
+    _processSelection();
+  }
+
   void _toggleSelectAll() {
-    // If everything is already selected, clear it. Otherwise, select everything.
     if (selectedWordIndices.length == words.length) {
       _clearSelection();
     } else {
@@ -122,6 +173,9 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   void _clearSelection() {
     setState(() {
       selectedWordIndices.clear();
+      dragSelectedIndices.clear();
+      dragStart = null;
+      dragCurrent = null;
       currentOriginalText = "";
       currentTranslatedText = "";
       isTranslating = false;
@@ -173,6 +227,9 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
         Positioned.fill(
           child: GestureDetector(
             onTap: _clearSelection,
+            onPanStart: _onPanStart,
+            onPanUpdate: _onPanUpdate,
+            onPanEnd: _onPanEnd,
             child: Container(color: Colors.transparent),
           ),
         ),
@@ -180,7 +237,8 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
         ...words.asMap().entries.map((entry) {
           final int index = entry.key;
           final Map<String, dynamic> w = entry.value;
-          final bool isSelected = selectedWordIndices.contains(index);
+          
+          final bool isSelected = selectedWordIndices.contains(index) || dragSelectedIndices.contains(index);
 
           final x = (w['x'] as num).toDouble() / pixelRatio - 8;
           final y = (w['y'] as num).toDouble() / pixelRatio - 15;
@@ -208,7 +266,18 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
           );
         }),
 
-        if (selectedWordIndices.isNotEmpty)
+        if (dragStart != null && dragCurrent != null)
+          Positioned.fromRect(
+            rect: Rect.fromPoints(dragStart!, dragCurrent!),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.2),
+                border: Border.all(color: AppColors.primary, width: 1.5),
+              ),
+            ),
+          ),
+
+        if (selectedWordIndices.isNotEmpty && dragStart == null)
           Positioned(
             bottom: 120, left: 20, right: 20,
             child: _buildTranslationPopup(),
@@ -228,7 +297,6 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    // Changed to select_all icon
                     icon: Icon(
                       selectedWordIndices.length == words.length ? Icons.deselect : Icons.select_all, 
                       color: Colors.white, 
@@ -278,7 +346,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.volume_up, color: AppColors.primary, size: 28), // Volume/Mic icon
+                    icon: const Icon(Icons.volume_up, color: AppColors.primary, size: 28),
                     onPressed: () {
                       debugPrint("Reading aloud: $currentOriginalText");
                     },
@@ -312,9 +380,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
           border: Border.all(color: AppColors.error, width: 2),
-          boxShadow: const [
-            BoxShadow(color: Colors.black26, blurRadius: 10)
-          ],
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
