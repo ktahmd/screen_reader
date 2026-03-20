@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../api_keys.dart';
 
 enum TtsVoiceMode { offline, google, adam, bella, elisabeth }
@@ -14,13 +15,11 @@ enum TtsVoiceMode { offline, google, adam, bella, elisabeth }
 class TtsService {
   static final AudioPlayer _audioPlayer = AudioPlayer();
   static final FlutterTts _flutterTts = FlutterTts();
+  static final Connectivity _connectivity = Connectivity();
 
   static TtsVoiceMode currentMode = TtsVoiceMode.elisabeth;
-  
-  // 🔹 Track if we are busy with an API call or internal logic
   static bool _isProcessing = false;
 
-  // 🔹 For Google Web Chunking
   static List<String> _googleChunks = [];
   static int _currentChunkIndex = 0;
   static bool _isReadingGoogle = false;
@@ -32,7 +31,6 @@ class TtsService {
   };
 
   static Future<void> init() async {
-    // 🔹 When a Google Chunk finishes, play the next one
     _audioPlayer.onPlayerComplete.listen((event) {
       if (_isReadingGoogle) {
         _currentChunkIndex++;
@@ -45,61 +43,80 @@ class TtsService {
     });
 
     await _flutterTts.setLanguage("en-US");
-    await _flutterTts.setSpeechRate(0.45);
+    await _flutterTts.setSpeechRate(0.5);
+  }
+
+  /// Helper to check if we have internet access
+  static Future<bool> isOnline() async {
+    var connectivityResult = await _connectivity.checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.none)) {
+      return false;
+    }
+    return true;
   }
 
   static String _normalize(String text) => text.trim();
-
-  static Future<String?> _getCachedFilePath(String text, TtsVoiceMode mode) async {
-    final normalized = _normalize(text).toLowerCase();
-    final hash = sha256.convert(utf8.encode(normalized + mode.toString())).toString();
-    final dir = await getTemporaryDirectory();
-    final path = '${dir.path}/$hash.mp3';
-    if (await File(path).exists()) return path;
-    return null;
-  }
 
   static Future<void> speak(String text) async {
     if (text.trim().isEmpty) return;
     if (_isProcessing) return;
 
     _isProcessing = true;
+    
+    // lowercase cuz Google TTS treats "Hello" and "hello" differently, causing cache misses. Normalizing to lowercase improves cache hits and consistency across providers.
+    final normalized = _normalize(text.toLowerCase());
     try {
       await stop();
-      final normalized = _normalize(text.toLowerCase());
 
-      // 🔹 RULE 3: Smart quota saving 
-      // max 3 words to avoid cases like "Hi, how are you?" being sent to ElevenLabs and consuming quota, while still allowing slightly longer phrases to benefit from better quality. This is a heuristic and can be adjusted based on user feedback.
+      // 1.RULE 1: Check Connectivity First
+      bool online = await isOnline();
+
+      // 2. Routing Logic
+      if (!online || currentMode == TtsVoiceMode.offline) {
+        if (!online && currentMode != TtsVoiceMode.offline) {
+          _showToast("Offline: Using system voice");
+        }
+        await _speakOffline(normalized);
+        return;
+      }
+
+      // 3. Cache check (Always check cache regardless of online status)
+      final hash = sha256.convert(utf8.encode(normalized.toLowerCase() + currentMode.toString())).toString();
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/$hash.mp3');
+
+      if (await file.exists()) {
+        await _audioPlayer.play(DeviceFileSource(file.path));
+        return;
+      }
+
+      // 4. Quota Saving: Short phrases use Google Web
       if (normalized.split(' ').length <= 3) {
-        debugPrint("word or phrase is short: using Google Web");
         await _speakGoogleWeb(normalized);
         return;
       }
 
-      // 🔹 RULE 4: Cache check
-      final cached = await _getCachedFilePath(normalized, currentMode);
-      if (cached != null) {
-        debugPrint("Playing from cache");
-        await _audioPlayer.play(DeviceFileSource(cached));
-        return;
-      }
-
-      // 🔹 Routing
-      if (currentMode == TtsVoiceMode.offline) {
-        await _speakOffline(normalized);
-      } else if (currentMode == TtsVoiceMode.google) {
+      // 5. Choose Provider
+      if (currentMode == TtsVoiceMode.google) {
         await _speakGoogleWeb(normalized);
       } else {
         await _speakElevenLabs(normalized);
       }
+    } catch (e) {
+      debugPrint("TTS speak error: $e");
+      await _speakOffline(normalized); 
     } finally {
       _isProcessing = false;
     }
   }
 
-  // 🔥 ELEVENLABS
+  // 🔥 ELEVENLABS with Connection Handling
   static Future<void> _speakElevenLabs(String text) async {
-    final voiceId = _voiceIds[currentMode]!;
+    final voiceId = _voiceIds[currentMode] ?? _voiceIds[TtsVoiceMode.bella]!;
+    //SHOW TOAST IF THE CURRENT MODE IS CHANGED TO DEFAULT MODE BELLA DUE TO MISSING VOICE ID
+    if (!_voiceIds.containsKey(currentMode)) {
+      _showToast("Voice ID not found for ${currentMode.toString().split('.').last}, defaulting to Bella");
+    }
     final url = 'https://api.elevenlabs.io/v1/text-to-speech/$voiceId';
 
     try {
@@ -108,10 +125,16 @@ class TtsService {
         headers: {'Content-Type': 'application/json', 'xi-api-key': elevenLabsApiKey},
         body: json.encode({
           "text": text,
-          "model_id": "eleven_turbo_v2", 
-          "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
+          "model_id": "eleven_flash_v2_5", 
+            "voice_settings": {
+                "stability": 0.4, 
+                "similarity_boost": 0.75,
+                "style": 0.2,
+                "speed": 0.9,
+                "use_speaker_boost": true
+              }
         }),
-      );
+      ).timeout(const Duration(seconds: 10)); 
 
       if (response.statusCode == 200) {
         final bytes = response.bodyBytes;
@@ -125,17 +148,21 @@ class TtsService {
         await _speakGoogleWeb(text);
       }
     } catch (e) {
-      _showToast("Network error. Switching to Google voice.");
+      debugPrint("ElevenLabs Failed: $e");
       await _speakGoogleWeb(text);
     }
   }
 
-  // 🌐 GOOGLE (Restored Chunking to fix Error -1005)
+  // 🌐 GOOGLE WEB with Error Handling
   static Future<void> _speakGoogleWeb(String text) async {
-    _googleChunks = _splitIntoSentences(text);
-    _currentChunkIndex = 0;
-    _isReadingGoogle = true;
-    await _playNextGoogleChunk();
+    try {
+      _googleChunks = _splitIntoSentences(text);
+      _currentChunkIndex = 0;
+      _isReadingGoogle = true;
+      await _playNextGoogleChunk();
+    } catch (e) {
+      await _speakOffline(text);
+    }
   }
 
   static Future<void> _playNextGoogleChunk() async {
@@ -143,40 +170,47 @@ class TtsService {
     
     final chunk = _googleChunks[_currentChunkIndex];
     try {
-      // Using client=tw-ob is essential for streaming
-      final url = "https://translate.google.com/translate_tts?ie=UTF-8&tl=en-US&client=tw-ob&q=${Uri.encodeComponent(chunk)}";
-      await _audioPlayer.play(UrlSource(url));
+      //tl: Changes the language/accent (e.g., en-US, en-GB, fr-FR)
+      
+      final url = "https://translate.google.com/translate_tts?ie=UTF-8&tl=en-US&client=tw-ob&q=${Uri.encodeComponent(chunk)}&total=${_googleChunks.length}&idx=$_currentChunkIndex";
+      // We check online status again before playing each chunk
+      if (await isOnline()) {
+        await _audioPlayer.play(UrlSource(url));
+      } else {
+        throw Exception("Lost connection between chunks");
+      }
     } catch (e) {
       debugPrint("Google Play Error: $e");
       await _speakOffline(chunk);
     }
   }
 
-  // 📱 OFFLINE
+  // 📱 OFFLINE (SYSTEM TTS)
   static Future<void> _speakOffline(String text) async {
-    await _flutterTts.speak(text);
+    try {
+      await _flutterTts.speak(text);
+    } catch (e) {
+      debugPrint("Offline TTS critical failure: $e");
+    }
   }
 
   static Future<void> stop() async {
     _isReadingGoogle = false;
-    await _audioPlayer.stop();
-    await _flutterTts.stop();
+    try {
+      await _audioPlayer.stop();
+      await _flutterTts.stop();
+    } catch (e) {
+      debugPrint("Error stopping audio: $e");
+    }
   }
 
-  // 🔹 Helper to split text into safe chunks for Google API
   static List<String> _splitIntoSentences(String text) {
-    // Splits by punctuation (. ! ?) but keeps the punctuation with the sentence
     return text.split(RegExp(r'(?<=[.!?])\s+')).where((s) => s.isNotEmpty).toList();
   }
 
   static void _handleApiError(int code) {
-    if (code == 401) {
-      _showToast("Invalid API key");
-    } else if (code == 429) {
-      _showToast("Quota exceeded");
-    } else {
-      _showToast("AI Error: $code. Using Google.");
-    }
+    if (code == 401) _showToast("Invalid API key");
+    else if (code == 429) _showToast("Quota exceeded");
   }
 
   static void _showToast(String msg) {
