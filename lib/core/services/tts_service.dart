@@ -63,7 +63,8 @@ class TtsService {
     final chunk = _textChunks[_currentChunkIndex];
     
     try {
-      final url = "https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${Uri.encodeComponent(chunk)}";
+      const String languageCode = 'en-US'; 
+      final url = "https://translate.google.com/translate_tts?ie=UTF-8&tl=$languageCode&client=tw-ob&q=${Uri.encodeComponent(chunk)}";
       await _audioPlayer.play(UrlSource(url));
     } catch (e) {
       debugPrint("TTS Audio Error: $e");
