@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import '../core/helpers/colors.dart';
 import '../core/services/translator_service.dart';
+import '../core/services/tts_service.dart';
 
 class OverlayContentWidget extends StatefulWidget {
   const OverlayContentWidget({super.key});
@@ -25,6 +26,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   @override
   void initState() {
     super.initState();
+    TtsService.init();
     FlutterOverlayWindow.overlayListener.listen((event) async {
       if (event is Map) {
         final action = event['action'];
@@ -63,6 +65,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   }
 
   void _closeOverlay() async {
+    TtsService.stop();
     setState(() {
       showWords = false;
       words = [];
@@ -171,6 +174,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   }
 
   void _clearSelection() {
+    TtsService.stop();
     setState(() {
       selectedWordIndices.clear();
       dragSelectedIndices.clear();
@@ -348,6 +352,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
                   IconButton(
                     icon: const Icon(Icons.volume_up, color: AppColors.primary, size: 28),
                     onPressed: () {
+                      TtsService.speak(currentOriginalText);
                       debugPrint("Reading aloud: $currentOriginalText");
                     },
                     padding: EdgeInsets.zero,
