@@ -16,6 +16,7 @@ dependencies:
 
   # text to speech
   flutter_tts: ^4.2.5
+  audioplayers: ^6.6.0
 
   # text recognition OCR
   google_mlkit_text_recognition: ^0.15.0
@@ -27,7 +28,9 @@ dependencies:
   provider: ^6.1.5+1
   circle_flags: ^5.0.1
   path_provider: ^2.1.5
-  audioplayers: ^6.6.0
+  http: ^1.6.0
+  fluttertoast: ^8.2.4
+  crypto: ^3.0.7
 
   
 
