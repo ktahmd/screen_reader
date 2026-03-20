@@ -77,7 +77,22 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
         selectedWordIndices.add(index);
       }
     });
+    _processSelection();
+  }
 
+  void _toggleSelectAll() {
+    // If everything is already selected, clear it. Otherwise, select everything.
+    if (selectedWordIndices.length == words.length) {
+      _clearSelection();
+    } else {
+      setState(() {
+        selectedWordIndices = Set.from(Iterable.generate(words.length));
+      });
+      _processSelection();
+    }
+  }
+
+  void _processSelection() async {
     if (selectedWordIndices.isEmpty) {
       setState(() {
         currentOriginalText = "";
@@ -193,11 +208,9 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
           );
         }),
 
-
         if (selectedWordIndices.isNotEmpty)
           Positioned(
-            bottom: 120, 
-            left: 20, right: 20,
+            bottom: 120, left: 20, right: 20,
             child: _buildTranslationPopup(),
           ),
 
@@ -215,8 +228,13 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.mic, color: Colors.white, size: 30),
-                    onPressed: () { /* Placeholder for TTS */ },
+                    // Changed to select_all icon
+                    icon: Icon(
+                      selectedWordIndices.length == words.length ? Icons.deselect : Icons.select_all, 
+                      color: Colors.white, 
+                      size: 30
+                    ),
+                    onPressed: _toggleSelectAll,
                   ),
                   const SizedBox(width: 20),
                   IconButton(
@@ -235,30 +253,54 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   }
 
   Widget _buildTranslationPopup() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: AppColors.primary, width: 2),
-        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, 
-        children: [
-          Text(
-            currentOriginalText,
-            style: const TextStyle(fontSize: 16, color: Colors.black54, fontWeight: FontWeight.bold),
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: AppColors.primary, width: 2),
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min, 
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      currentOriginalText,
+                      style: const TextStyle(fontSize: 16, color: Colors.black54, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.volume_up, color: AppColors.primary, size: 28), // Volume/Mic icon
+                    onPressed: () {
+                      debugPrint("Reading aloud: $currentOriginalText");
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              const Divider(height: 20, thickness: 1),
+              
+              isTranslating
+                  ? const Center(child: Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: CircularProgressIndicator(),
+                    ))
+                  : Text(
+                      currentTranslatedText,
+                      style: const TextStyle(fontSize: 18, color: Colors.black, fontWeight: FontWeight.bold),
+                    ),
+            ],
           ),
-          const Divider(height: 20, thickness: 1),
-          isTranslating
-              ? const Center(child: CircularProgressIndicator())
-              : Text(
-                  currentTranslatedText,
-                  style: const TextStyle(fontSize: 18, color: Colors.black, fontWeight: FontWeight.bold),
-                ),
-        ],
+        ),
       ),
     );
   }
@@ -286,10 +328,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text("Error",
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold)),
+                  const Text("Error", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.white),
                     onPressed: _closeOverlay,
@@ -297,26 +336,25 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
                 ],
               ),
             ),
-
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                "Permission lost. Tap to Restore Access",
-                style: TextStyle(color: Colors.black, fontSize: 16),
+            const SizedBox(height: 10),
+            Text(
+              errorCode == 'NEED_PERMISSION' 
+                  ? "Permission lost. Tap below to Restore Access." 
+                  : "An error occurred.",
+              textAlign: TextAlign.center,
+            ),
+            if (errorCode == 'NEED_PERMISSION')
+              TextButton(
+                onPressed: () {
+                  FlutterOverlayWindow.shareData({'action': 'open_app_request'});
+                  _closeOverlay();
+                },
+                child: const Text("Fix Permission"),
               ),
-            ),
-
-            TextButton(
-              onPressed: () {
-                FlutterOverlayWindow.shareData({'action': 'open_app_request'});
-                _closeOverlay();
-              },
-              child: const Text("Fix Permission"),
-            ),
+              const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
-
 }
