@@ -253,14 +253,16 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
             left: x, top: y, width: width, height: height,
             child: GestureDetector(
               onTap: () => _toggleWordSelection(index),
+              //NOTE: The text is invisible but the container is tappable,
+              // allowing selection without blocking the view of the original text
               child: Container(
-                color: isSelected ? AppColors.primary.withOpacity(0.9) : Colors.white,
+                color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.white.withOpacity(0),
                 child: FittedBox(
                   fit: BoxFit.contain,
                   child: Text(
                     w['text'],
                     style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black, 
+                      color: isSelected ? Colors.white.withOpacity(0) : Colors.black.withOpacity(0),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
