@@ -10,6 +10,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../api_keys.dart';
 
+enum AppTtsState { idle, loading, playing, paused }
 enum TtsVoiceMode { offline, google, adam, bella, elisabeth }
 
 class TtsService {
@@ -24,6 +25,12 @@ class TtsService {
   static int _currentChunkIndex = 0;
   static bool _isReadingGoogle = false;
 
+  // This is used by the UI to show the correct Icon (Sound/Loading/Pause/Play)
+  static ValueNotifier<AppTtsState> stateNotifier = ValueNotifier(AppTtsState.idle);
+  
+  // Track last text to handle Resume logic correctly
+  static String _lastSpokenText = "";
+
   static const Map<TtsVoiceMode, String> _voiceIds = {
     TtsVoiceMode.adam: "pNInz6obpgDQGcFmaJgB",
     TtsVoiceMode.bella: "hpp4J3VqNfWAUOO0d1Us",
@@ -31,15 +38,24 @@ class TtsService {
   };
 
   static Future<void> init() async {
+    // 1. Handle completion for ElevenLabs, Google, and Cached files
     _audioPlayer.onPlayerComplete.listen((event) {
       if (_isReadingGoogle) {
         _currentChunkIndex++;
         if (_currentChunkIndex < _googleChunks.length) {
           _playNextGoogleChunk();
+          return; // Keep playing next chunk
         } else {
           _isReadingGoogle = false;
         }
       }
+      // If we reach here, all audio (including ElevenLabs/Cache) is done
+      stateNotifier.value = AppTtsState.idle;
+    });
+
+    // 2. Handle completion for System TTS (Offline mode)
+    _flutterTts.setCompletionHandler(() {
+      stateNotifier.value = AppTtsState.idle;
     });
 
     await _flutterTts.setLanguage("en-US");
@@ -59,14 +75,26 @@ class TtsService {
 
   static Future<void> speak(String text) async {
     if (text.trim().isEmpty) return;
+
+    // Check if we are resuming the same text after a Pause
+    if (stateNotifier.value == AppTtsState.paused && _lastSpokenText == text) {
+      await resume();
+      return;
+    }
+
     if (_isProcessing) return;
 
     _isProcessing = true;
+    _lastSpokenText = text;
+    stateNotifier.value = AppTtsState.loading;
     
     // lowercase cuz Google TTS treats "Hello" and "hello" differently, causing cache misses. Normalizing to lowercase improves cache hits and consistency across providers.
     final normalized = _normalize(text.toLowerCase());
+    
     try {
-      await stop();
+      // Ensure everything is stopped before starting new audio
+      await _audioPlayer.stop(); 
+      await _flutterTts.stop();
 
       // 1.RULE 1: Check Connectivity First
       bool online = await isOnline();
@@ -81,33 +109,42 @@ class TtsService {
       }
 
       // 3. Cache check (Always check cache regardless of online status)
-      final hash = sha256.convert(utf8.encode(normalized.toLowerCase() + currentMode.toString())).toString();
+      final hash = sha256.convert(utf8.encode(normalized + currentMode.toString())).toString();
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/$hash.mp3');
 
       if (await file.exists()) {
+        stateNotifier.value = AppTtsState.playing;
         await _audioPlayer.play(DeviceFileSource(file.path));
         return;
       }
 
-      // 4. Quota Saving: Short phrases use Google Web
-      if (normalized.split(' ').length <= 3) {
-        await _speakGoogleWeb(normalized);
-        return;
-      }
-
-      // 5. Choose Provider
-      if (currentMode == TtsVoiceMode.google) {
+      // 4. Quota Saving: Short phrases (<=3 words) use Google Web
+      if (normalized.split(' ').length <= 3 || currentMode == TtsVoiceMode.google) {
         await _speakGoogleWeb(normalized);
       } else {
         await _speakElevenLabs(normalized);
       }
+
     } catch (e) {
       debugPrint("TTS speak error: $e");
+      stateNotifier.value = AppTtsState.idle;
       await _speakOffline(normalized); 
     } finally {
       _isProcessing = false;
     }
+  }
+
+  static Future<void> pause() async {
+    await _audioPlayer.pause();
+    await _flutterTts.pause();
+    stateNotifier.value = AppTtsState.paused;
+  }
+
+  static Future<void> resume() async {
+    await _audioPlayer.resume();
+    // System TTS resume support varies by phone, but we trigger it
+    stateNotifier.value = AppTtsState.playing;
   }
 
   // 🔥 ELEVENLABS with Connection Handling
@@ -117,6 +154,7 @@ class TtsService {
     if (!_voiceIds.containsKey(currentMode)) {
       _showToast("Voice ID not found for ${currentMode.toString().split('.').last}, defaulting to Bella");
     }
+
     final url = 'https://api.elevenlabs.io/v1/text-to-speech/$voiceId';
 
     try {
@@ -126,13 +164,13 @@ class TtsService {
         body: json.encode({
           "text": text,
           "model_id": "eleven_flash_v2_5", 
-            "voice_settings": {
-                "stability": 0.4, 
-                "similarity_boost": 0.75,
-                "style": 0.2,
-                "speed": 0.9,
-                "use_speaker_boost": true
-              }
+          "voice_settings": {
+            "stability": 0.4, 
+            "similarity_boost": 0.75,
+            "style": 0.1,
+            "speed": 0.9,
+            "use_speaker_boost": true
+          }
         }),
       ).timeout(const Duration(seconds: 10)); 
 
@@ -142,6 +180,8 @@ class TtsService {
         final dir = await getTemporaryDirectory();
         final file = File('${dir.path}/$hash.mp3');
         await file.writeAsBytes(bytes);
+        
+        stateNotifier.value = AppTtsState.playing; // Ensure icon changes to Pause/Stop
         await _audioPlayer.play(DeviceFileSource(file.path));
       } else {
         _handleApiError(response.statusCode);
@@ -159,6 +199,7 @@ class TtsService {
       _googleChunks = _splitIntoSentences(text);
       _currentChunkIndex = 0;
       _isReadingGoogle = true;
+      stateNotifier.value = AppTtsState.playing;
       await _playNextGoogleChunk();
     } catch (e) {
       await _speakOffline(text);
@@ -173,7 +214,7 @@ class TtsService {
       //tl: Changes the language/accent (e.g., en-US, en-GB, fr-FR)
       
       final url = "https://translate.google.com/translate_tts?ie=UTF-8&tl=en-US&client=tw-ob&q=${Uri.encodeComponent(chunk)}&total=${_googleChunks.length}&idx=$_currentChunkIndex";
-      // We check online status again before playing each chunk
+      
       if (await isOnline()) {
         await _audioPlayer.play(UrlSource(url));
       } else {
@@ -188,14 +229,18 @@ class TtsService {
   // 📱 OFFLINE (SYSTEM TTS)
   static Future<void> _speakOffline(String text) async {
     try {
+      stateNotifier.value = AppTtsState.playing; 
       await _flutterTts.speak(text);
     } catch (e) {
       debugPrint("Offline TTS critical failure: $e");
+      stateNotifier.value = AppTtsState.idle;
     }
   }
 
   static Future<void> stop() async {
     _isReadingGoogle = false;
+    _lastSpokenText = ""; // Clear memory
+    stateNotifier.value = AppTtsState.idle; 
     try {
       await _audioPlayer.stop();
       await _flutterTts.stop();

@@ -22,6 +22,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   Offset? dragStart;
   Offset? dragCurrent;
   Set<int> dragSelectedIndices = {};
+  bool isExpanded = false;
 
   @override
   void initState() {
@@ -176,6 +177,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   void _clearSelection() {
     TtsService.stop();
     setState(() {
+      isExpanded = false;
       selectedWordIndices.clear();
       dragSelectedIndices.clear();
       dragStart = null;
@@ -285,12 +287,14 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
 
         if (selectedWordIndices.isNotEmpty && dragStart == null)
           Positioned(
-            bottom: 120, left: 20, right: 20,
+            bottom: isExpanded ? 150 : 120, 
+            left: 10, 
+            right: 10,
             child: _buildTranslationPopup(),
           ),
 
         Positioned(
-          bottom: 50, left: 0, right: 0,
+          bottom: 40, left: 0, right: 0,
           child: Center(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -305,14 +309,13 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
                   IconButton(
                     icon: Icon(
                       selectedWordIndices.length == words.length ? Icons.deselect : Icons.select_all, 
-                      color: Colors.white, 
-                      size: 30
+                      color: Colors.white
                     ),
                     onPressed: _toggleSelectAll,
                   ),
                   const SizedBox(width: 20),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                    icon: const Icon(Icons.close, color: Colors.white),
                     onPressed: _closeOverlay,
                   ),
                 ],
@@ -327,59 +330,112 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   }
 
   Widget _buildTranslationPopup() {
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
-      child: Container(
-        padding: const EdgeInsets.all(16),
+      bool needsExpansion = currentOriginalText.length > 45 || currentTranslatedText.length > 45;
+
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        // Give the popup a maximum height so it doesn't cover the whole screen
+        constraints: BoxConstraints(
+          maxHeight: isExpanded ? MediaQuery.of(context).size.height * 0.5 : 100,
+        ),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
           border: Border.all(color: AppColors.primary, width: 2),
           boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
         ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min, 
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start, // Align to top so scrolling works well
+          children: [
+            // 1. EXPAND/COLLAPSE BUTTON (LEFT)
+            if (needsExpansion)
+              IconButton(
+                icon: Icon(isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up),
+                onPressed: () => setState(() => isExpanded = !isExpanded),
+              )
+            else
+              const SizedBox(width: 48),
+
+            const SizedBox(width: 5),
+
+            // 2. TEXT SECTION (SCROLLABLE MIDDLE)
+            Expanded(
+              child: SingleChildScrollView( // <--- ENABLE SCROLLING
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                       currentOriginalText,
-                      style: const TextStyle(fontSize: 16, color: Colors.black54, fontWeight: FontWeight.bold),
+                      maxLines: isExpanded ? null : 1,
+                      overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 14, color: Colors.black54),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.volume_up, color: AppColors.primary, size: 28),
-                    onPressed: () {
-                      TtsService.speak(currentOriginalText);
-                      debugPrint("Reading aloud: $currentOriginalText");
-                    },
+                    if (isTranslating)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: LinearProgressIndicator(minHeight: 2),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          currentTranslatedText,
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.right,
+                          maxLines: isExpanded ? null : 1,
+                          overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16, 
+                            color: Colors.black, 
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 10),
+
+            // 3. SOUND CONTROLS (RIGHT)
+            ValueListenableBuilder<AppTtsState>(
+              valueListenable: TtsService.stateNotifier,
+              builder: (context, state, child) {
+                if (state == AppTtsState.loading) {
+                  return const SizedBox(
+                    width: 32, height: 32,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  );
+                }
+                
+                if (state == AppTtsState.playing) {
+                  return IconButton(
+                    icon: const Icon(Icons.pause_circle_filled, color: AppColors.primary, size: 32),
+                    onPressed: () => TtsService.pause(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const Divider(height: 20, thickness: 1),
-              
-              isTranslating
-                  ? const Center(child: Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: CircularProgressIndicator(),
-                    ))
-                  : Text(
-                      currentTranslatedText,
-                      style: const TextStyle(fontSize: 18, color: Colors.black, fontWeight: FontWeight.bold),
-                    ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+                  );
+                }
 
+                return IconButton(
+                  icon: Icon(
+                    state == AppTtsState.paused ? Icons.play_circle_filled : Icons.volume_up, 
+                    color: AppColors.primary, 
+                    size: 32
+                  ),
+                  onPressed: () => TtsService.speak(currentOriginalText),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                );
+              },
+            ),
+          ],
+        ),
+      );
+    }
+    
   Widget _buildErrorCard() {
     return Center(
       child: Container(
