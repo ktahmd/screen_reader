@@ -34,14 +34,18 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
       if (event is Map) {
 
         final action = event['action'];
-        if (action == 'update_tts_mode') {
-          final index = event['mode_index'] as int;
-          setState(() {
-            TtsService.currentMode = TtsVoiceMode.values[index];
-          });
-          debugPrint("✅ Overlay updated TTS Mode to: ${TtsService.currentMode}");
-          return; // Exit early
-        }
+        if (action == 'update_tts_modes') {
+          final sentenceIndex = event['sentence_index'] as int;
+            final wordIndex = event['word_index'] as int;
+            
+            setState(() {
+              TtsService.sentenceMode = TtsVoiceMode.values[sentenceIndex];
+              TtsService.wordMode = TtsVoiceMode.values[wordIndex];
+            });
+            
+            debugPrint("✅ Overlay updated TTS Modes -> Sentence: ${TtsService.sentenceMode.name}, Word: ${TtsService.wordMode.name}");
+            return; // Exit early
+          }
 
         if (action == 'result') {
           await FlutterOverlayWindow.moveOverlay(const OverlayPosition(0, 0));
@@ -188,11 +192,18 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
     }
   }
 
-Future<void> _initOverlaySettings() async {
-  final prefs = await SharedPreferences.getInstance();
-  int index = prefs.getInt('tts_mode') ?? TtsVoiceMode.elisabeth.index;
-  TtsService.currentMode = TtsVoiceMode.values[index];
-}
+  Future<void> _initOverlaySettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Read both keys, with their respective defaults (0 = auto, 1 = offline)
+    int sentenceIndex = prefs.getInt('sentence_mode') ?? TtsVoiceMode.auto.index;
+    int wordIndex = prefs.getInt('word_mode') ?? TtsVoiceMode.offline.index;
+    
+    setState(() {
+      TtsService.sentenceMode = TtsVoiceMode.values[sentenceIndex];
+      TtsService.wordMode = TtsVoiceMode.values[wordIndex];
+    });
+  }
 
   void _clearSelection() {
     TtsService.stop();
@@ -480,7 +491,11 @@ Future<void> _initOverlaySettings() async {
                         : Icons.volume_up,
                     color: AppColors.primary,
                     size: 32),
-                onPressed: () => TtsService.speak(currentOriginalText),
+                onPressed:  () {
+                    // If only one word is selected, pass isWord: true
+                    bool isSingleWord = selectedWordIndices.length <= 3;
+                    TtsService.speak(currentOriginalText, isWord: isSingleWord);
+                  },
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               );

@@ -61,10 +61,15 @@ void backgroundMain() {
                   {'action': 'error', 'errorCode': e.toString()});
             }
             break;
-          case 'update_tts_mode': 
-            final index = event['mode_index'] as int;
-            TtsService.currentMode = TtsVoiceMode.values[index];
-            debugPrint("🤖 BACKGROUND: TTS Mode updated to ${TtsService.currentMode}");
+            //ping from settings to update TTS mode in the overlay
+          case 'update_tts_modes':
+            final sentenceIndex = event['sentence_index'] as int;
+            final wordIndex = event['word_index'] as int;
+            
+            TtsService.sentenceMode = TtsVoiceMode.values[sentenceIndex];
+            TtsService.wordMode = TtsVoiceMode.values[wordIndex];
+            
+            debugPrint("🤖 BACKGROUND: TTS Modes updated -> Sentence: ${TtsService.sentenceMode.name}, Word: ${TtsService.wordMode.name}");
             break;
           case 'dispose_listener':
             // Example: cancel the subscription if a dispose action is received

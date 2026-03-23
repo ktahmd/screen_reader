@@ -1,39 +1,53 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/tts_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
-  TtsVoiceMode _currentTtsMode = TtsVoiceMode.elisabeth;
-  TtsVoiceMode get currentTtsMode => _currentTtsMode;
+  TtsVoiceMode _sentenceMode = TtsVoiceMode.auto;
+  TtsVoiceMode _wordMode = TtsVoiceMode.offline;
+
+  TtsVoiceMode get sentenceMode => _sentenceMode;
+  TtsVoiceMode get wordMode => _wordMode;
 
   SettingsProvider() {
-    _loadFromDisk();
+    _loadSettings();
   }
 
-  Future<void> _loadFromDisk() async {
+  Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    int index = prefs.getInt('tts_mode_index') ?? TtsVoiceMode.elisabeth.index;
-    _currentTtsMode = TtsVoiceMode.values[index];
-    TtsService.currentMode = _currentTtsMode;
+    _sentenceMode = TtsVoiceMode.values[prefs.getInt('sentence_mode') ?? 0];
+    _wordMode = TtsVoiceMode
+        .values[prefs.getInt('word_mode') ?? 1]; // Default word to offline
+
+    // Sync to Service
+    TtsService.sentenceMode = _sentenceMode;
+    TtsService.wordMode = _wordMode;
     notifyListeners();
   }
 
-  Future<void> setTtsMode(TtsVoiceMode mode) async {
-    _currentTtsMode = mode;
-    TtsService.currentMode = mode;
-    
-    // Save to Disk
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('tts_mode_index', mode.index);
+  Future<void> updateMode(TtsVoiceMode mode, bool isWordSetting) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (isWordSetting) {
+        _wordMode = mode;
+        TtsService.wordMode = mode;
+        await prefs.setInt('word_mode', mode.index);
+      } else {
+        _sentenceMode = mode;
+        TtsService.sentenceMode = mode;
+        await prefs.setInt('sentence_mode', mode.index);
+      }
 
-    // Notify Overlay UI
-    await FlutterOverlayWindow.shareData({
-      'action': 'update_tts_mode',
-      'mode_index': mode.index,
-    });
-
-    notifyListeners();
+      // Ping Overlay
+      await FlutterOverlayWindow.shareData({
+        'action': 'update_tts_modes',
+        'sentence_index': _sentenceMode.index,
+        'word_index': _wordMode.index,
+      });
+      notifyListeners();
+    } catch (e) {
+      debugPrint("❌ Failed to send TTS mode update to overlay: $e");
+    }
   }
 }

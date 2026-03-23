@@ -8,137 +8,52 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // watch allows the UI to rebuild when setTtsMode is called
-    final settingsProvider = context.watch<SettingsProvider>();
-    final theme = Theme.of(context);
+    final settings = context.watch<SettingsProvider>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Settings"),
-        centerTitle: true,
-      ),
-      body: ListView(
-        physics: const BouncingScrollPhysics(),
-        children: [
-          _buildSectionHeader(context, "Voice Engine"),
-          _buildTtsTile(
-            context,
-            title: "Offline (Basic)",
-            subtitle: "Uses phone's default voice. Data-free.",
-            mode: TtsVoiceMode.offline,
-            currentMode: settingsProvider.currentTtsMode,
-            icon: Icons.cloud_off_rounded,
-          ),
-          _buildTtsTile(
-            context,
-            title: "Google TTS",
-            subtitle: "Natural sounding, requires internet.",
-            mode: TtsVoiceMode.google,
-            currentMode: settingsProvider.currentTtsMode,
-            icon: Icons.fmd_good_rounded,
-          ),
+      appBar: AppBar(title: const Text("Voice Settings")),
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(child: _buildHeader("Reading Sentences")),
+          _buildEngineList(context, settings.sentenceMode, false),
           
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Divider(thickness: 1),
-          ),
+          const SliverToBoxAdapter(child: Divider(height: 40)),
           
-          _buildSectionHeader(context, "Premium Voices (ElevenLabs)"),
-          _buildTtsTile(
-            context,
-            title: "Elisabeth",
-            subtitle: "Clear & Professional female voice",
-            mode: TtsVoiceMode.elisabeth,
-            currentMode: settingsProvider.currentTtsMode,
-            icon: Icons.face_3_rounded,
-          ),
-          _buildTtsTile(
-            context,
-            title: "Adam",
-            subtitle: "Deep & Authoritative male voice",
-            mode: TtsVoiceMode.adam,
-            currentMode: settingsProvider.currentTtsMode,
-            icon: Icons.face_6_rounded,
-          ),
-          _buildTtsTile(
-            context,
-            title: "Bella",
-            subtitle: "Soft & Friendly female voice",
-            mode: TtsVoiceMode.bella,
-            currentMode: settingsProvider.currentTtsMode,
-            icon: Icons.face_2_rounded,
-          ),
+          SliverToBoxAdapter(child: _buildHeader("Clicking Single Words")),
+          _buildEngineList(context, settings.wordMode, true),
+          
+          const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title) {
+  Widget _buildHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-      child: Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.primary,
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-          letterSpacing: 1.2,
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
     );
   }
 
-  Widget _buildTtsTile(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required TtsVoiceMode mode,
-    required TtsVoiceMode currentMode,
-    required IconData icon,
-  }) {
-    final isSelected = mode == currentMode;
-    final theme = Theme.of(context);
+  Widget _buildEngineList(BuildContext context, TtsVoiceMode current, bool isWord) {
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        _cuteTile(context, "Auto Mode", "Smart switching", Icons.auto_awesome, TtsVoiceMode.auto, current, isWord),
+        _cuteTile(context, "Offline", "Fast & Data-free", Icons.cloud_off, TtsVoiceMode.offline, current, isWord),
+        _cuteTile(context, "Google TTS", "Standard Web Voice", Icons.g_translate, TtsVoiceMode.google, current, isWord),
+        _cuteTile(context, "Premium (Elisabeth)", "High Quality", Icons.face_3, TtsVoiceMode.elisabeth, current, isWord),
+      ]),
+    );
+  }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
-      decoration: BoxDecoration(
-        color: isSelected 
-            ? theme.colorScheme.primary.withOpacity(0.1) 
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.surfaceVariant,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon, 
-            color: isSelected ? Colors.white : theme.colorScheme.onSurfaceVariant,
-            size: 24,
-          ),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            color: isSelected ? theme.colorScheme.primary : null,
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: const TextStyle(fontSize: 12),
-        ),
-        trailing: isSelected 
-            ? Icon(Icons.check_circle, color: theme.colorScheme.primary) 
-            : const Icon(Icons.circle_outlined, color: Colors.grey),
-        onTap: () {
-          context.read<SettingsProvider>().setTtsMode(mode);
-        },
-      ),
+  Widget _cuteTile(BuildContext context, String title, String sub, IconData icon, TtsVoiceMode mode, TtsVoiceMode current, bool isWord) {
+    final isSelected = mode == current;
+    return ListTile(
+      leading: Icon(icon, color: isSelected ? Colors.blue : Colors.grey),
+      title: Text(title, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+      subtitle: Text(sub),
+      trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.blue) : const Icon(Icons.circle_outlined),
+      onTap: () => context.read<SettingsProvider>().updateMode(mode, isWord),
     );
   }
 }

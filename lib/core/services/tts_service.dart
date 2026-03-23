@@ -12,17 +12,15 @@ import '../api_keys.dart';
 
 enum AppTtsState { idle, loading, playing, paused }
 
-enum TtsVoiceMode { offline, google, adam, bella, elisabeth }
+// Added 'auto' to the modes
+enum TtsVoiceMode { auto, offline, google, adam, bella, elisabeth }
 
 class TtsService {
   static final AudioPlayer _audioPlayer = AudioPlayer();
   static final FlutterTts _flutterTts = FlutterTts();
   static final Connectivity _connectivity = Connectivity();
 
-  static TtsVoiceMode currentMode = TtsVoiceMode.elisabeth;
-
-  static ValueNotifier<AppTtsState> stateNotifier =
-      ValueNotifier(AppTtsState.idle);
+  static ValueNotifier<AppTtsState> stateNotifier = ValueNotifier(AppTtsState.idle);
 
   static bool _isProcessing = false;
   static bool _isUsingAudioPlayer = false;
@@ -33,6 +31,10 @@ class TtsService {
   static bool _isReadingGoogle = false;
 
   static String _lastSpokenText = "";
+
+  // The two independent settings
+  static TtsVoiceMode sentenceMode = TtsVoiceMode.auto;
+  static TtsVoiceMode wordMode = TtsVoiceMode.offline;
 
   static const Map<TtsVoiceMode, String> _voiceIds = {
     TtsVoiceMode.adam: "pNInz6obpgDQGcFmaJgB",
@@ -48,13 +50,6 @@ class TtsService {
     });
 
     await _flutterTts.awaitSpeakCompletion(true);
-
-    // _flutterTts.setCompletionHandler(() {
-    //   _isPlaying = false;
-    //   _isUsingAudioPlayer = false;
-    //   stateNotifier.value = AppTtsState.idle;
-    // });
-
     await _flutterTts.setLanguage("en-US");
     await _flutterTts.setSpeechRate(0.5);
   }
@@ -68,13 +63,13 @@ class TtsService {
 
   static String _normalize(String text) => text.trim();
 
-  // ================= MAIN SPEAK =================
+  // ================= MAIN SPEAK (ROUTER) =================
 
-  static Future<void> speak(String text) async {
+  static Future<void> speak(String text, {required bool isWord}) async {
     if (text.trim().isEmpty) return;
 
     if (stateNotifier.value == AppTtsState.paused) {
-      await resume();
+      await resume(isWord: isWord);
       return;
     }
 
@@ -82,12 +77,14 @@ class TtsService {
 
     _isProcessing = true;
     _lastSpokenText = text;
-
     stateNotifier.value = AppTtsState.loading;
 
     final normalized = _normalize(text.toLowerCase());
-    debugPrint("🔊 TTS Request: $currentMode");
-    debugPrint("🌐 TTS Mode: $currentMode ");
+    
+    // 1. Determine which mode setting to use based on the isWord flag
+    TtsVoiceMode activeMode = isWord ? wordMode : sentenceMode;
+    
+    debugPrint("🔊 TTS Request: isWord=$isWord | Active Mode=$activeMode");
 
     try {
       await _audioPlayer.stop();
@@ -95,68 +92,69 @@ class TtsService {
 
       bool online = await isOnline();
 
-      if (!online || currentMode == TtsVoiceMode.offline) {
+      // 2. Global Offline Check & Toast
+      if (!online && activeMode != TtsVoiceMode.offline) {
+        Fluttertoast.showToast(
+          msg: "No Internet Connection. Using Offline mode.",
+          toastLength: Toast.LENGTH_SHORT,
+          backgroundColor: Colors.black87,
+          textColor: Colors.white,
+        );
         await _speakOffline(normalized);
         return;
       }
 
-
-      // if (normalized.split(' ').length <= 20) {
-      //   await _speakOffline(normalized);
-      // } else 
-      if (currentMode == TtsVoiceMode.google) {
-        await _speakGoogleWeb(normalized);
+      // 3. Clean Routing to the correct function
+      if (activeMode == TtsVoiceMode.auto) {
+        await _speakAutoMode(normalized);
       } else {
-        await _speakElevenLabs(normalized);
+        await _routeSpecificMode(normalized, activeMode);
       }
+
     } catch (e) {
       debugPrint("TTS error: $e");
+      Fluttertoast.showToast(msg: "Error occurred. Falling back to Offline.");
       await _speakOffline(normalized);
     } finally {
       _isProcessing = false;
     }
   }
 
-  // ================= PAUSE / RESUME =================
+  // ================= ROUTING FUNCTIONS =================
 
-  static Future<void> pause() async {
-    if (_isUsingAudioPlayer) {
-      await _audioPlayer.pause();
+  static Future<void> _speakAutoMode(String text) async {
+    final wordCount = text.split(RegExp(r'\s+')).length;
+    
+    if (wordCount <= 20) {
+      // Small texts are fast, use Offline to save time/API credits
+      await _speakOffline(text);
     } else {
-      await _flutterTts.stop();
-      stateNotifier.value = AppTtsState.idle;
+      // Long paragraphs use premium voice
+      await _speakElevenLabs(text, TtsVoiceMode.elisabeth);
     }
-
-    stateNotifier.value = AppTtsState.paused;
   }
 
-  static Future<void> resume() async {
-    if (_isUsingAudioPlayer) {
-      await _audioPlayer.resume();
-      stateNotifier.value = AppTtsState.playing;
+  static Future<void> _routeSpecificMode(String text, TtsVoiceMode mode) async {
+    if (mode == TtsVoiceMode.offline) {
+      await _speakOffline(text);
+    } else if (mode == TtsVoiceMode.google) {
+      await _speakGoogleWeb(text);
     } else {
-      // Offline = restart, not resume
-      if (_lastSpokenText.isNotEmpty) {
-        await speak(_lastSpokenText);
-      }
+      // It's one of the ElevenLabs premium voices
+      await _speakElevenLabs(text, mode);
     }
   }
 
   // ================= ELEVENLABS =================
 
-  static Future<void> _speakElevenLabs(String text) async {
+  static Future<void> _speakElevenLabs(String text, TtsVoiceMode voice) async {
     _isUsingAudioPlayer = true;
     _isPlaying = true;
 
-    final voiceId = _voiceIds[currentMode] ?? _voiceIds[TtsVoiceMode.bella]!;
-
-    final normalized = _normalize(text).toLowerCase();
-
+    final voiceId = _voiceIds[voice] ?? _voiceIds[TtsVoiceMode.bella]!;
+    
     // 🔥 UNIQUE HASH (text + voice)
-    final hash = sha256
-        .convert(utf8.encode(normalized + currentMode.toString()))
-        .toString();
-
+    final hash = sha256.convert(utf8.encode(text + voice.toString())).toString();
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/$hash.mp3');
 
@@ -185,16 +183,16 @@ class TtsService {
       );
 
       if (response.statusCode == 200) {
-        // ✅ SAVE TO CACHE
         await file.writeAsBytes(response.bodyBytes);
-
         stateNotifier.value = AppTtsState.playing;
         await _audioPlayer.play(DeviceFileSource(file.path));
       } else {
+        Fluttertoast.showToast(msg: "API Quota Exceeded. Falling back to Google TTS.");
         await _speakGoogleWeb(text);
       }
     } catch (e) {
       debugPrint("ElevenLabs failed: $e");
+      Fluttertoast.showToast(msg: "ElevenLabs API Failed. Falling back to Google TTS.");
       await _speakGoogleWeb(text);
     }
   }
@@ -203,12 +201,10 @@ class TtsService {
 
   static Future<void> _speakGoogleWeb(String text) async {
     _isUsingAudioPlayer = true;
-
     _googleChunks = _splitIntoSentences(text);
     _currentChunkIndex = 0;
     _isReadingGoogle = true;
     _isPlaying = true;
-
     stateNotifier.value = AppTtsState.playing;
 
     await _playNextGoogleChunk();
@@ -220,46 +216,66 @@ class TtsService {
     final chunk = _googleChunks[_currentChunkIndex];
 
     try {
-      final url =
-          "https://translate.google.com/translate_tts?ie=UTF-8&tl=en-US&client=tw-ob&q=${Uri.encodeComponent(chunk)}";
-
+      final url = "https://translate.google.com/translate_tts?ie=UTF-8&tl=en-US&client=tw-ob&q=${Uri.encodeComponent(chunk)}";
       await _audioPlayer.stop();
       await _audioPlayer.play(UrlSource(url));
     } catch (e) {
       debugPrint("Google chunk error: $e");
+      Fluttertoast.showToast(msg: "Google TTS Failed. Falling back to Offline.");
       await _speakOffline(chunk);
     }
   }
 
-  // 🔥 SINGLE SOURCE OF TRUTH FOR COMPLETION
-
   // ================= OFFLINE =================
 
   static Future<void> _speakOffline(String text) async {
-    _isUsingAudioPlayer = false;
+    _isUsingAudioPlayer = false; // Force flag to false
     _isPlaying = true;
-
-    stateNotifier.value = AppTtsState.playing;
-
+    
     try {
       await _flutterTts.stop();
+      stateNotifier.value = AppTtsState.playing;
       await _flutterTts.awaitSpeakCompletion(true);
       await _flutterTts.speak(text);
+      
       _isPlaying = false;
-      stateNotifier.value = AppTtsState.idle;
+      stateNotifier.value = AppTtsState.idle; 
     } catch (e) {
       debugPrint("Offline TTS error: $e");
+      _isPlaying = false;
       stateNotifier.value = AppTtsState.idle;
     }
   }
 
-  // ================= STOP =================
+  // ================= PAUSE / RESUME / STOP =================
+
+  static Future<void> pause() async {
+    if (_isUsingAudioPlayer) {
+      await _audioPlayer.pause();
+      stateNotifier.value = AppTtsState.paused;
+    } else {
+      await _flutterTts.stop();
+      stateNotifier.value = AppTtsState.paused; // Fake pause
+    }
+  }
+
+  static Future<void> resume({required bool isWord}) async {
+    if (_isUsingAudioPlayer) {
+      await _audioPlayer.resume();
+      stateNotifier.value = AppTtsState.playing;
+    } else {
+      // Since we had to stop FlutterTTS, on resume we MUST restart it
+      if (_lastSpokenText.isNotEmpty) {
+        stateNotifier.value = AppTtsState.loading;
+        await speak(_lastSpokenText, isWord: isWord);
+      }
+    }
+  }
 
   static Future<void> stop() async {
     _isReadingGoogle = false;
     _lastSpokenText = "";
     _isPlaying = false;
-
     stateNotifier.value = AppTtsState.idle;
 
     try {
@@ -272,7 +288,6 @@ class TtsService {
   static void _handleAudioComplete() {
     if (_isReadingGoogle) {
       _currentChunkIndex++;
-
       if (_currentChunkIndex < _googleChunks.length) {
         _playNextGoogleChunk();
         return;
@@ -280,15 +295,11 @@ class TtsService {
         _isReadingGoogle = false;
       }
     }
-
     _isPlaying = false;
     stateNotifier.value = AppTtsState.idle;
   }
 
   static List<String> _splitIntoSentences(String text) {
-    return text
-        .split(RegExp(r'(?<=[.!?])\s+'))
-        .where((s) => s.isNotEmpty)
-        .toList();
+    return text.split(RegExp(r'(?<=[.!?])\s+')).where((s) => s.isNotEmpty).toList();
   }
 }
