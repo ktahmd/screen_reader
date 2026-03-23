@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/helpers/colors.dart';
 import '../core/services/translator_service.dart';
 import '../core/services/tts_service.dart';
@@ -27,10 +28,20 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   @override
   void initState() {
     super.initState();
+    _initOverlaySettings();
     TtsService.init();
     FlutterOverlayWindow.overlayListener.listen((event) async {
       if (event is Map) {
+
         final action = event['action'];
+        if (action == 'update_tts_mode') {
+          final index = event['mode_index'] as int;
+          setState(() {
+            TtsService.currentMode = TtsVoiceMode.values[index];
+          });
+          debugPrint("✅ Overlay updated TTS Mode to: ${TtsService.currentMode}");
+          return; // Exit early
+        }
 
         if (action == 'result') {
           await FlutterOverlayWindow.moveOverlay(const OverlayPosition(0, 0));
@@ -176,6 +187,12 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
       });
     }
   }
+
+Future<void> _initOverlaySettings() async {
+  final prefs = await SharedPreferences.getInstance();
+  int index = prefs.getInt('tts_mode') ?? TtsVoiceMode.elisabeth.index;
+  TtsService.currentMode = TtsVoiceMode.values[index];
+}
 
   void _clearSelection() {
     TtsService.stop();

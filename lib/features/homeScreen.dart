@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'settings/settings_screen.dart';
 import 'translate/translate.dart';
 
 
@@ -17,7 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _pages = [
     const TranslatorScreen(),
     const Center(child: Text("Saved Words Page")), 
-    const Center(child: Text("Settings Page")),
+    const SettingsScreen(),
   ];
 
   @override

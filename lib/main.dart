@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:provider/provider.dart';
+import 'package:screen_reader/core/services/tts_service.dart';
 import 'core/helpers/theme_helper.dart';
+import 'core/providers/settings_provider.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/providers/overlay_provider.dart';
 import 'core/services/ocr_service.dart';
@@ -59,6 +61,11 @@ void backgroundMain() {
                   {'action': 'error', 'errorCode': e.toString()});
             }
             break;
+          case 'update_tts_mode': 
+            final index = event['mode_index'] as int;
+            TtsService.currentMode = TtsVoiceMode.values[index];
+            debugPrint("🤖 BACKGROUND: TTS Mode updated to ${TtsService.currentMode}");
+            break;
           case 'dispose_listener':
             // Example: cancel the subscription if a dispose action is received
             await overlaySubscription?.cancel();
@@ -79,6 +86,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => OverlayProvider(), lazy: false),
+        ChangeNotifierProvider(create: (_) => SettingsProvider(), lazy: false),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {

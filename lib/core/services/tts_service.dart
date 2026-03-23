@@ -86,6 +86,8 @@ class TtsService {
     stateNotifier.value = AppTtsState.loading;
 
     final normalized = _normalize(text.toLowerCase());
+    debugPrint("🔊 TTS Request: $currentMode");
+    debugPrint("🌐 TTS Mode: $currentMode ");
 
     try {
       await _audioPlayer.stop();
@@ -98,9 +100,11 @@ class TtsService {
         return;
       }
 
-      if (normalized.split(' ').length <= 20) {
-        await _speakOffline(normalized);
-      } else if (currentMode == TtsVoiceMode.google) {
+
+      // if (normalized.split(' ').length <= 20) {
+      //   await _speakOffline(normalized);
+      // } else 
+      if (currentMode == TtsVoiceMode.google) {
         await _speakGoogleWeb(normalized);
       } else {
         await _speakElevenLabs(normalized);
