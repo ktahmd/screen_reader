@@ -11,6 +11,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../api_keys.dart';
 
 enum AppTtsState { idle, loading, playing, paused }
+
 enum TtsVoiceMode { offline, google, adam, bella, elisabeth }
 
 class TtsService {
@@ -97,8 +98,9 @@ class TtsService {
         return;
       }
 
-      if (normalized.split(' ').length <= 3 ||
-          currentMode == TtsVoiceMode.google) {
+      if (normalized.split(' ').length <= 20) {
+        await _speakOffline(normalized);
+      } else if (currentMode == TtsVoiceMode.google) {
         await _speakGoogleWeb(normalized);
       } else {
         await _speakElevenLabs(normalized);
@@ -129,10 +131,10 @@ class TtsService {
       await _audioPlayer.resume();
       stateNotifier.value = AppTtsState.playing;
     } else {
-    // Offline = restart, not resume
-    if (_lastSpokenText.isNotEmpty) {
-      await speak(_lastSpokenText);
-    }
+      // Offline = restart, not resume
+      if (_lastSpokenText.isNotEmpty) {
+        await speak(_lastSpokenText);
+      }
     }
   }
 
@@ -142,8 +144,7 @@ class TtsService {
     _isUsingAudioPlayer = true;
     _isPlaying = true;
 
-    final voiceId =
-        _voiceIds[currentMode] ?? _voiceIds[TtsVoiceMode.bella]!;
+    final voiceId = _voiceIds[currentMode] ?? _voiceIds[TtsVoiceMode.bella]!;
 
     final normalized = _normalize(text).toLowerCase();
 
@@ -164,8 +165,7 @@ class TtsService {
     }
 
     // ❌ 2. OTHERWISE CALL API
-    final url =
-        'https://api.elevenlabs.io/v1/text-to-speech/$voiceId';
+    final url = 'https://api.elevenlabs.io/v1/text-to-speech/$voiceId';
 
     try {
       final response = await http.post(
@@ -195,7 +195,6 @@ class TtsService {
     }
   }
 
-
   // ================= GOOGLE =================
 
   static Future<void> _speakGoogleWeb(String text) async {
@@ -212,8 +211,7 @@ class TtsService {
   }
 
   static Future<void> _playNextGoogleChunk() async {
-    if (!_isReadingGoogle ||
-        _currentChunkIndex >= _googleChunks.length) return;
+    if (!_isReadingGoogle || _currentChunkIndex >= _googleChunks.length) return;
 
     final chunk = _googleChunks[_currentChunkIndex];
 
@@ -233,24 +231,23 @@ class TtsService {
 
   // ================= OFFLINE =================
 
-static Future<void> _speakOffline(String text) async {
-  _isUsingAudioPlayer = false;
-  _isPlaying = true;
+  static Future<void> _speakOffline(String text) async {
+    _isUsingAudioPlayer = false;
+    _isPlaying = true;
 
-  stateNotifier.value = AppTtsState.playing;
+    stateNotifier.value = AppTtsState.playing;
 
-  try {
-    await _flutterTts.stop();
-    await _flutterTts.awaitSpeakCompletion(true);
-    await _flutterTts.speak(text);
-    _isPlaying = false;
-    stateNotifier.value = AppTtsState.idle;
-
-  } catch (e) {
-    debugPrint("Offline TTS error: $e");
-    stateNotifier.value = AppTtsState.idle;
+    try {
+      await _flutterTts.stop();
+      await _flutterTts.awaitSpeakCompletion(true);
+      await _flutterTts.speak(text);
+      _isPlaying = false;
+      stateNotifier.value = AppTtsState.idle;
+    } catch (e) {
+      debugPrint("Offline TTS error: $e");
+      stateNotifier.value = AppTtsState.idle;
+    }
   }
-}
 
   // ================= STOP =================
 

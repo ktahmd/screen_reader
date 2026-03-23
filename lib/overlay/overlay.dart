@@ -33,15 +33,16 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
         final action = event['action'];
 
         if (action == 'result') {
+          await FlutterOverlayWindow.moveOverlay(const OverlayPosition(0, 0));
+          await FlutterOverlayWindow.resizeOverlay(-1, -1, false);
+
           setState(() {
             words = event['words'] as List<dynamic>;
             showWords = true;
             isProcessing = false;
             errorCode = null;
-            _clearSelection(); 
+            _clearSelection();
           });
-          await FlutterOverlayWindow.moveOverlay(const OverlayPosition(0, 0));
-          await FlutterOverlayWindow.resizeOverlay(-1, -1, false);
         }
 
         if (action == 'error') {
@@ -88,6 +89,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   }
 
   void _onPanStart(DragStartDetails details) {
+    _clearSelection();
     setState(() {
       dragStart = details.localPosition;
       dragCurrent = details.localPosition;
@@ -103,7 +105,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
     if (dragStart != null && dragCurrent != null) {
       final selectionRect = Rect.fromPoints(dragStart!, dragCurrent!);
       final pixelRatio = MediaQuery.of(context).devicePixelRatio - 0.09;
-      
+
       Set<int> tempDragSelection = {};
 
       for (int i = 0; i < words.length; i++) {
@@ -164,7 +166,8 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
       isTranslating = true;
     });
 
-    final translated = await TranslationService.translateText(combinedText, from: 'en', to: 'ar');
+    final translated = await TranslationService.translateText(combinedText,
+        from: 'en', to: 'ar');
 
     if (selectedWordIndices.isNotEmpty) {
       setState(() {
@@ -198,19 +201,24 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
 
   Widget _buildButton() {
     return SizedBox(
-      width: 60, height: 60,
+      width: 60,
+      height: 60,
       child: Center(
         child: GestureDetector(
           onDoubleTap: isProcessing ? null : _performCapture,
           child: Container(
-            width: 40, height: 40,
+            width: 40,
+            height: 40,
             decoration: const BoxDecoration(
               color: AppColors.primary,
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
             ),
             child: isProcessing
-                ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 3))
                 : const Icon(Icons.remove_red_eye, color: Colors.white),
           ),
         ),
@@ -219,11 +227,11 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
   }
 
   Widget _buildFullOverlay() {
-    //exemple of my phone resolution is 1440x2960 
-    //and pixel ratio is 4.3, so we need to divide the coordinates by 4.3 
-    //to get the correct position on the overlay, 
-    //but I found that the text is slightly off, 
-    //so I subtracted a small value from the pixel ratio to adjust it, 
+    //exemple of my phone resolution is 1440x2960
+    //and pixel ratio is 4.3, so we need to divide the coordinates by 4.3
+    //to get the correct position on the overlay,
+    //but I found that the text is slightly off,
+    //so I subtracted a small value from the pixel ratio to adjust it,
     //this is a common practice when dealing with different screen densities and resolutions in Flutter.
     //TODO: In future, we can make this adjustment dynamic by testing on multiple devices and finding the optimal value or formula for it.
     final pixelRatio = MediaQuery.of(context).devicePixelRatio - 0.09;
@@ -233,18 +241,19 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
         Positioned.fill(
           child: GestureDetector(
             onTap: _clearSelection,
+            onDoubleTap: _closeOverlay,
             onPanStart: _onPanStart,
             onPanUpdate: _onPanUpdate,
             onPanEnd: _onPanEnd,
             child: Container(color: Colors.transparent),
           ),
         ),
-
         ...words.asMap().entries.map((entry) {
           final int index = entry.key;
           final Map<String, dynamic> w = entry.value;
-          
-          final bool isSelected = selectedWordIndices.contains(index) || dragSelectedIndices.contains(index);
+
+          final bool isSelected = selectedWordIndices.contains(index) ||
+              dragSelectedIndices.contains(index);
 
           final x = (w['x'] as num).toDouble() / pixelRatio - 8;
           final y = (w['y'] as num).toDouble() / pixelRatio - 15;
@@ -252,19 +261,30 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
           final height = (w['h'] as num).toDouble() / pixelRatio + 6;
 
           return Positioned(
-            left: x, top: y, width: width, height: height,
+            left: x,
+            top: y,
+            width: width,
+            height: height,
             child: GestureDetector(
-              onTap: () => _toggleWordSelection(index),
+              onTap: () {
+                _clearSelection();
+                _toggleWordSelection(index);
+              },
+              onLongPress: () => _toggleWordSelection(index),
               //NOTE: The text is invisible but the container is tappable,
               // allowing selection without blocking the view of the original text
               child: Container(
-                color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.white.withOpacity(0),
+                color: isSelected
+                    ? AppColors.primary.withOpacity(0.1)
+                    : Colors.white.withOpacity(0),
                 child: FittedBox(
                   fit: BoxFit.contain,
                   child: Text(
                     w['text'],
                     style: TextStyle(
-                      color: isSelected ? Colors.white.withOpacity(0) : Colors.black.withOpacity(0),
+                      color: isSelected
+                          ? Colors.white.withOpacity(0)
+                          : Colors.black.withOpacity(0),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -273,7 +293,6 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
             ),
           );
         }),
-
         if (dragStart != null && dragCurrent != null)
           Positioned.fromRect(
             rect: Rect.fromPoints(dragStart!, dragCurrent!),
@@ -284,158 +303,177 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
               ),
             ),
           ),
-
         if (selectedWordIndices.isNotEmpty && dragStart == null)
           Positioned(
-            bottom: isExpanded ? 150 : 120, 
-            left: 10, 
+            bottom: isExpanded ? 150 : 120,
+            left: 10,
             right: 10,
             child: _buildTranslationPopup(),
           ),
-
         Positioned(
-          bottom: 40, left: 0, right: 0,
+          bottom: 40,
+          left: 0,
+          right: 0,
           child: Center(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(30),
-                boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 10)],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      selectedWordIndices.length == words.length ? Icons.deselect : Icons.select_all, 
-                      color: Colors.white
-                    ),
-                    onPressed: _toggleSelectAll,
-                  ),
-                  const SizedBox(width: 20),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: _closeOverlay,
-                  ),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black45, blurRadius: 10)
                 ],
+              ),
+              // ADD THIS SingleChildScrollView to prevent transient RenderFlex overflows
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                          selectedWordIndices.length == words.length
+                              ? Icons.deselect
+                              : Icons.select_all,
+                          color: Colors.white),
+                      onPressed: _toggleSelectAll,
+                    ),
+                    const SizedBox(width: 20),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: _closeOverlay,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-
         if (errorCode != null) _buildErrorCard(),
       ],
     );
   }
 
   Widget _buildTranslationPopup() {
-      bool needsExpansion = currentOriginalText.length > 45 || currentTranslatedText.length > 45;
+    bool needsExpansion =
+        currentOriginalText.length > 45 || currentTranslatedText.length > 45;
 
-      return AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        // Give the popup a maximum height so it doesn't cover the whole screen
-        constraints: BoxConstraints(
-          maxHeight: isExpanded ? MediaQuery.of(context).size.height * 0.5 : 100,
-        ),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: AppColors.primary, width: 2),
-          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start, // Align to top so scrolling works well
-          children: [
-            // 1. EXPAND/COLLAPSE BUTTON (LEFT)
-            if (needsExpansion)
-              IconButton(
-                icon: Icon(isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up),
-                onPressed: () => setState(() => isExpanded = !isExpanded),
-              )
-            else
-              const SizedBox(width: 48),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      // Give the popup a maximum height so it doesn't cover the whole screen
+      constraints: BoxConstraints(
+        maxHeight: isExpanded ? MediaQuery.of(context).size.height * 0.5 : 100,
+      ),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: AppColors.primary, width: 2),
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
+      ),
+      child: Row(
+        crossAxisAlignment:
+            CrossAxisAlignment.start, // Align to top so scrolling works well
+        children: [
+          // 1. EXPAND/COLLAPSE BUTTON (LEFT)
+          if (needsExpansion)
+            IconButton(
+              icon: Icon(isExpanded
+                  ? Icons.keyboard_arrow_down
+                  : Icons.keyboard_arrow_up),
+              onPressed: () => setState(() => isExpanded = !isExpanded),
+            )
+          else
+            const SizedBox(width: 48),
 
-            const SizedBox(width: 5),
+          const SizedBox(width: 5),
 
-            // 2. TEXT SECTION (SCROLLABLE MIDDLE)
-            Expanded(
-              child: SingleChildScrollView( // <--- ENABLE SCROLLING
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      currentOriginalText,
-                      maxLines: isExpanded ? null : 1,
-                      overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 14, color: Colors.black54),
-                    ),
-                    if (isTranslating)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8),
-                        child: LinearProgressIndicator(minHeight: 2),
-                      )
-                    else
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          currentTranslatedText,
-                          textDirection: TextDirection.rtl,
-                          textAlign: TextAlign.right,
-                          maxLines: isExpanded ? null : 1,
-                          overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 16, 
-                            color: Colors.black, 
-                            fontWeight: FontWeight.bold,
-                          ),
+          // 2. TEXT SECTION (SCROLLABLE MIDDLE)
+          Expanded(
+            child: SingleChildScrollView(
+              // <--- ENABLE SCROLLING
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    currentOriginalText,
+                    maxLines: isExpanded ? null : 1,
+                    overflow: isExpanded
+                        ? TextOverflow.visible
+                        : TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14, color: Colors.black54),
+                  ),
+                  if (isTranslating)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: LinearProgressIndicator(minHeight: 2),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        currentTranslatedText,
+                        textDirection: TextDirection.rtl,
+                        textAlign: TextAlign.right,
+                        maxLines: isExpanded ? null : 1,
+                        overflow: isExpanded
+                            ? TextOverflow.visible
+                            : TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
+          ),
 
-            const SizedBox(width: 10),
+          const SizedBox(width: 10),
 
-            // 3. SOUND CONTROLS (RIGHT)
-            ValueListenableBuilder<AppTtsState>(
-              valueListenable: TtsService.stateNotifier,
-              builder: (context, state, child) {
-                if (state == AppTtsState.loading) {
-                  return const SizedBox(
-                    width: 32, height: 32,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  );
-                }
-                
-                if (state == AppTtsState.playing) {
-                  return IconButton(
-                    icon: const Icon(Icons.pause_circle_filled, color: AppColors.primary, size: 32),
-                    onPressed: () => TtsService.pause(),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  );
-                }
+          // 3. SOUND CONTROLS (RIGHT)
+          ValueListenableBuilder<AppTtsState>(
+            valueListenable: TtsService.stateNotifier,
+            builder: (context, state, child) {
+              if (state == AppTtsState.loading) {
+                return const SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                );
+              }
 
+              if (state == AppTtsState.playing) {
                 return IconButton(
-                  icon: Icon(
-                    state == AppTtsState.paused ? Icons.play_circle_filled : Icons.volume_up, 
-                    color: AppColors.primary, 
-                    size: 32
-                  ),
-                  onPressed: () => TtsService.speak(currentOriginalText),
+                  icon: const Icon(Icons.pause_circle_filled,
+                      color: AppColors.primary, size: 32),
+                  onPressed: () => TtsService.pause(),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 );
-              },
-            ),
-          ],
-        ),
-      );
-    }
-    
+              }
+
+              return IconButton(
+                icon: Icon(
+                    state == AppTtsState.paused
+                        ? Icons.play_circle_filled
+                        : Icons.volume_up,
+                    color: AppColors.primary,
+                    size: 32),
+                onPressed: () => TtsService.speak(currentOriginalText),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildErrorCard() {
     return Center(
       child: Container(
@@ -457,7 +495,11 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text("Error", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+                  const Text("Error",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: Colors.white)),
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.white),
                     onPressed: _closeOverlay,
@@ -467,20 +509,21 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
             ),
             const SizedBox(height: 10),
             Text(
-              errorCode == 'NEED_PERMISSION' 
-                  ? "Permission lost. Tap below to Restore Access." 
+              errorCode == 'NEED_PERMISSION'
+                  ? "Permission lost. Tap below to Restore Access."
                   : "An error occurred.",
               textAlign: TextAlign.center,
             ),
             if (errorCode == 'NEED_PERMISSION')
               TextButton(
                 onPressed: () {
-                  FlutterOverlayWindow.shareData({'action': 'open_app_request'});
+                  FlutterOverlayWindow.shareData(
+                      {'action': 'open_app_request'});
                   _closeOverlay();
                 },
                 child: const Text("Fix Permission"),
               ),
-              const SizedBox(height: 20),
+            const SizedBox(height: 20),
           ],
         ),
       ),
