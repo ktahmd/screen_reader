@@ -50,13 +50,7 @@ ThemeData appTheme(Brightness brightness) {
     ),
 
     // ===== CARD =====
-    cardTheme: CardTheme(
-      color: isDark ? AppColors.cardDark : AppColors.cardLight,
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
+
 
     // ===== TEXT =====
     textTheme: TextTheme(
