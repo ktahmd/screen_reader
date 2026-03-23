@@ -34,17 +34,25 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
       if (event is Map) {
 
         final action = event['action'];
-        if (action == 'update_tts_modes') {
+if (action == 'update_tts_modes') {
           final sentenceIndex = event['sentence_index'] as int;
           final wordIndex = event['word_index'] as int;
+          
           final String apiKey = event['api_key'] as String;
           final voiceIndex = event['voice_index'] as int;
+          
+          final String geminiKey = event['gemini_api_key'] as String;
+          final geminiVoiceIdx = event['gemini_voice_index'] as int;
           
           setState(() {
             TtsService.sentenceMode = TtsVoiceMode.values[sentenceIndex];
             TtsService.wordMode = TtsVoiceMode.values[wordIndex];
+            
             TtsService.elevenLabsApiKey = apiKey.isEmpty ? null : apiKey;
             TtsService.currentElevenLabsVoice = ElevenLabsVoice.values[voiceIndex];
+
+            TtsService.geminiApiKey = geminiKey.isEmpty ? null : geminiKey;
+            TtsService.currentGeminiVoice = GeminiVoice.values[geminiVoiceIdx];
           });
           return;
         }
@@ -194,16 +202,24 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
     }
   }
 
-  Future<void> _initOverlaySettings() async {
+Future<void> _initOverlaySettings() async {
     final prefs = await SharedPreferences.getInstance();
-    
-    // Read both keys, with their respective defaults (0 = auto, 1 = offline)
     int sentenceIndex = prefs.getInt('sentence_mode') ?? TtsVoiceMode.auto.index;
     int wordIndex = prefs.getInt('word_mode') ?? TtsVoiceMode.offline.index;
     
+    // ElevenLabs
+    TtsService.elevenLabsApiKey = prefs.getString('elevenlabs_api_key');
+    int elVoiceIdx = prefs.getInt('elevenlabs_voice') ?? ElevenLabsVoice.elisabeth.index;
+    
+    // Gemini
+    TtsService.geminiApiKey = prefs.getString('gemini_api_key');
+    int gemVoiceIdx = prefs.getInt('gemini_voice') ?? GeminiVoice.zephyr.index;
+
     setState(() {
       TtsService.sentenceMode = TtsVoiceMode.values[sentenceIndex];
       TtsService.wordMode = TtsVoiceMode.values[wordIndex];
+      TtsService.currentElevenLabsVoice = ElevenLabsVoice.values[elVoiceIdx];
+      TtsService.currentGeminiVoice = GeminiVoice.values[gemVoiceIdx];
     });
   }
 

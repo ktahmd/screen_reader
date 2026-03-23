@@ -39,16 +39,32 @@ class SettingsScreen extends StatelessWidget {
   Widget _buildEngineList(BuildContext context, TtsVoiceMode current, bool isWord, SettingsProvider settings) {
     return SliverList(
       delegate: SliverChildListDelegate([
-        _cuteTile(context, "Auto Mode", "Smart switching", Icons.auto_awesome, TtsVoiceMode.auto, current, isWord),
-        _cuteTile(context, "Offline", "Fast & Data-free", Icons.cloud_off, TtsVoiceMode.offline, current, isWord),
-        _cuteTile(context, "Google TTS", "Standard Web Voice", Icons.g_translate, TtsVoiceMode.google, current, isWord),
-        
+        _cuteTile(context, "Auto Mode", "Smart switching", Icons.auto_awesome_mosaic, TtsVoiceMode.auto, current, isWord),
+        _cuteTile(context, isWord ? "Google TTS (Recommended)" : "Google TTS", "Standard Web Voice", Icons.g_translate, TtsVoiceMode.google, current, isWord),
+        // Gemini Tile
+        _cuteTile(
+          context,
+          "Google Gemini 2.5",
+          "AI Expressive Voices",
+          Icons.auto_awesome,
+          TtsVoiceMode.gemini,
+          current,
+          isWord,
+          trailingWidgets:[
+            IconButton(
+              icon: const Icon(Icons.settings, color: Colors.blue),
+              onPressed: () => _showGeminiConfigDialog(context, settings),
+            ),
+          ],
+          errorMessage: "Please add a Gemini API Key",
+          onErrorAction: () => _showGeminiConfigDialog(context, settings),
+        ),
         // ElevenLabs Tile has a trailing Settings Icon
         _cuteTile(
             context,
             "ElevenLabs",
             "Advanced AI Voices",
-            Icons.record_voice_over,
+            Icons.pause,
             TtsVoiceMode.elevenlabs,
             current,
             isWord,
@@ -63,6 +79,7 @@ class SettingsScreen extends StatelessWidget {
             onErrorAction: () =>
                 _showElevenLabsConfigDialog(context, settings),
           ),
+          _cuteTile(context, "Offline", "Fast & Data-free", Icons.cloud_off, TtsVoiceMode.offline, current, isWord),
       ]),
     );
   }
@@ -167,6 +184,65 @@ class SettingsScreen extends StatelessWidget {
                 ElevatedButton(
                   onPressed: () {
                     settings.updateElevenLabsConfig(keyController.text.trim(), selectedVoice);
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Save"),
+                ),
+              ],
+            );
+          }
+        );
+      }
+    );
+  }
+
+
+  void _showGeminiConfigDialog(BuildContext context, SettingsProvider settings) {
+    final TextEditingController keyController = TextEditingController(text: settings.geminiApiKey);
+    GeminiVoice selectedVoice = settings.geminiVoice;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text("Gemini TTS Config"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children:[
+                  TextField(
+                    controller: keyController,
+                    decoration: const InputDecoration(
+                      labelText: "Gemini API Key",
+                      border: OutlineInputBorder(),
+                      hintText: "Enter your Google AI Studio Key",
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  DropdownButtonFormField<GeminiVoice>(
+                    value: selectedVoice,
+                    decoration: const InputDecoration(labelText: "Voice", border: OutlineInputBorder()),
+                    items: GeminiVoice.values.map((voice) {
+                      return DropdownMenuItem(
+                        value: voice,
+                        child: Text(voice.name.toUpperCase()),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => selectedVoice = val);
+                    },
+                  ),
+                ],
+              ),
+              actions:[
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    settings.updateGeminiConfig(keyController.text.trim(), selectedVoice);
                     Navigator.pop(context);
                   },
                   child: const Text("Save"),

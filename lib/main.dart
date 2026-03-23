@@ -62,16 +62,26 @@ void backgroundMain() {
             }
             break;
             //ping from settings to update TTS mode in the overlay
-          case 'update_tts_modes':
+case 'update_tts_modes':
             final sentenceIndex = event['sentence_index'] as int;
             final wordIndex = event['word_index'] as int;
+            
             final String apiKey = event['api_key'] as String;
             final voiceIndex = event['voice_index'] as int;
             
+            final String geminiKey = event['gemini_api_key'] as String;
+            final geminiVoiceIdx = event['gemini_voice_index'] as int;
+            
             TtsService.sentenceMode = TtsVoiceMode.values[sentenceIndex];
             TtsService.wordMode = TtsVoiceMode.values[wordIndex];
+            
             TtsService.elevenLabsApiKey = apiKey.isEmpty ? null : apiKey;
             TtsService.currentElevenLabsVoice = ElevenLabsVoice.values[voiceIndex];
+
+            TtsService.geminiApiKey = geminiKey.isEmpty ? null : geminiKey;
+            TtsService.currentGeminiVoice = GeminiVoice.values[geminiVoiceIdx];
+            
+            debugPrint("🤖 BACKGROUND: TTS Modes updated");
             break;
           case 'dispose_listener':
             // Example: cancel the subscription if a dispose action is received

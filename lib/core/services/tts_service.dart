@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -11,9 +12,12 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 
 enum AppTtsState { idle, loading, playing, paused }
 
-// Updated Enums
-enum TtsVoiceMode { auto, offline, google, elevenlabs }
+// Updated Enums with Gemini
+enum TtsVoiceMode { auto, offline, google, elevenlabs, gemini }
 enum ElevenLabsVoice { adam, bella, elisabeth }
+
+// All 6 available Gemini 2.5 TTS voices
+enum GeminiVoice { puck, charon, kore, fenrir, aoede, zephyr }
 
 class TtsService {
   static final AudioPlayer _audioPlayer = AudioPlayer();
@@ -26,7 +30,7 @@ class TtsService {
   static bool _isUsingAudioPlayer = false;
   static bool _isPlaying = false;
 
-  static List<String> _googleChunks = [];
+  static List<String> _googleChunks =[];
   static int _currentChunkIndex = 0;
   static bool _isReadingGoogle = false;
 
@@ -35,11 +39,14 @@ class TtsService {
   static TtsVoiceMode sentenceMode = TtsVoiceMode.auto;
   static TtsVoiceMode wordMode = TtsVoiceMode.offline;
 
-  // New Variables for ElevenLabs Config
+  // Configuration for External APIs
   static String? elevenLabsApiKey;
   static ElevenLabsVoice currentElevenLabsVoice = ElevenLabsVoice.elisabeth;
 
-  static const Map<ElevenLabsVoice, String> _voiceIds = {
+  static String? geminiApiKey;
+  static GeminiVoice currentGeminiVoice = GeminiVoice.zephyr;
+
+  static const Map<ElevenLabsVoice, String> _elevenLabsVoiceIds = {
     ElevenLabsVoice.adam: "pNInz6obpgDQGcFmaJgB",
     ElevenLabsVoice.bella: "hpp4J3VqNfWAUOO0d1Us",
     ElevenLabsVoice.elisabeth: "9tDJMfriv2Hg6KGY603n",
@@ -106,13 +113,14 @@ class TtsService {
   static Future<void> _speakAutoMode(String text) async {
     final wordCount = text.split(RegExp(r'\s+')).length;
     if (wordCount <= 20) {
-      await _speakOffline(text);
+      await _speakGoogleWeb(text);
     } else {
-      // Safely fallback to Google if API key is missing
-      if (elevenLabsApiKey == null || elevenLabsApiKey!.isEmpty) {
-        await _speakGoogleWeb(text);
-      } else {
+      if (geminiApiKey != null && geminiApiKey!.isNotEmpty) {
+        await _speakGemini(text);
+      } else if (elevenLabsApiKey != null && elevenLabsApiKey!.isNotEmpty) {
         await _speakElevenLabs(text);
+      } else {
+        await _speakGoogleWeb(text);
       }
     }
   }
@@ -120,11 +128,129 @@ class TtsService {
   static Future<void> _routeSpecificMode(String text, TtsVoiceMode mode) async {
     if (mode == TtsVoiceMode.offline) {
       await _speakOffline(text);
-    } else if (mode == TtsVoiceMode.google) {
-      await _speakGoogleWeb(text);
-    } else {
+    } else if (mode == TtsVoiceMode.gemini) {
+      await _speakGemini(text);
+    } else if (mode == TtsVoiceMode.elevenlabs) {
       await _speakElevenLabs(text);
+    } else {
+      await _speakGoogleWeb(text);
     }
+  }
+
+  // ================= GEMINI TTS =================
+
+  static Future<void> _speakGemini(String text) async {
+    if (geminiApiKey == null || geminiApiKey!.isEmpty) {
+      Fluttertoast.showToast(msg: "Gemini API Key missing. Falling back.");
+      await _speakGoogleWeb(text);
+      return;
+    }
+
+    _isUsingAudioPlayer = true;
+    _isPlaying = true;
+
+    final voiceName = currentGeminiVoice.name;
+    final hash = sha256.convert(utf8.encode("${text}gemini_$voiceName")).toString();
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/$hash.wav');
+
+    // ✅ 1. USE CACHE IF EXISTS
+    if (await file.exists()) {
+      stateNotifier.value = AppTtsState.playing;
+      await _audioPlayer.stop();
+      await _audioPlayer.play(DeviceFileSource(file.path));
+      return;
+    }
+
+    // ❌ 2. OTHERWISE CALL GEMINI API
+    // Using generateContent instead of streamGenerateContent to get a single block of audio easily
+    final url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=$geminiApiKey';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          "contents":[
+            {
+              "role": "user",
+              "parts": [
+                {"text": text}
+              ]
+            }
+          ],
+          "generationConfig": {
+            "responseModalities": ["audio"],
+            "speech_config": {
+              "voice_config": {
+                "prebuilt_voice_config": {
+                  "voice_name": voiceName.replaceFirst(voiceName[0], voiceName[0].toUpperCase()) 
+                }
+              }
+            }
+          }
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        // Extract base64 audio data from the complex Gemini JSON response
+        final base64Audio = data['candidates'][0]['content']['parts'][0]['inlineData']['data'];
+        
+        // Decode base64 to Raw PCM bytes
+        Uint8List pcmBytes = base64Decode(base64Audio);
+        
+        // Gemini returns raw PCM 24000Hz 16-bit Mono. Audioplayers needs a WAV header to play it natively!
+        Uint8List wavBytes = _addWavHeader(pcmBytes);
+
+        // Save to cache as WAV
+        await file.writeAsBytes(wavBytes);
+        
+        stateNotifier.value = AppTtsState.playing;
+        await _audioPlayer.play(DeviceFileSource(file.path));
+      } else {
+        debugPrint("Gemini TTS Error: ${response.body}");
+        Fluttertoast.showToast(msg: "Gemini API failed. Falling back.");
+        await _speakGoogleWeb(text);
+      }
+    } catch (e) {
+      debugPrint("Gemini failed: $e");
+      Fluttertoast.showToast(msg: "Gemini API Failed. Falling back.");
+      await _speakGoogleWeb(text);
+    }
+  }
+
+  // Helper function to convert raw Gemini PCM to standard playable WAV format
+  static Uint8List _addWavHeader(Uint8List pcmData) {
+    int channels = 1;
+    int sampleRate = 24000;
+    int byteRate = sampleRate * channels * 2;
+    int totalDataLen = pcmData.length;
+    int totalAudioLen = totalDataLen + 36;
+
+    var header = ByteData(44);
+    // "RIFF"
+    header.setUint8(0, 82); header.setUint8(1, 73); header.setUint8(2, 70); header.setUint8(3, 70);
+    header.setUint32(4, totalAudioLen, Endian.little);
+    // "WAVE"
+    header.setUint8(8, 87); header.setUint8(9, 65); header.setUint8(10, 86); header.setUint8(11, 69);
+    // "fmt "
+    header.setUint8(12, 102); header.setUint8(13, 109); header.setUint8(14, 116); header.setUint8(15, 32);
+    header.setUint32(16, 16, Endian.little); // subchunk1size
+    header.setUint16(20, 1, Endian.little); // audio format (PCM)
+    header.setUint16(22, channels, Endian.little);
+    header.setUint32(24, sampleRate, Endian.little);
+    header.setUint32(28, byteRate, Endian.little);
+    header.setUint16(32, 2, Endian.little); // block align
+    header.setUint16(34, 16, Endian.little); // bits per sample
+    // "data"
+    header.setUint8(36, 100); header.setUint8(37, 97); header.setUint8(38, 116); header.setUint8(39, 97);
+    header.setUint32(40, totalDataLen, Endian.little);
+
+    var b = BytesBuilder();
+    b.add(header.buffer.asUint8List());
+    b.add(pcmData);
+    return b.toBytes();
   }
 
   // ================= ELEVENLABS =================
@@ -139,7 +265,7 @@ class TtsService {
     _isUsingAudioPlayer = true;
     _isPlaying = true;
 
-    final voiceId = _voiceIds[currentElevenLabsVoice]!;
+    final voiceId = _elevenLabsVoiceIds[currentElevenLabsVoice]!;
     final hash = sha256.convert(utf8.encode(text + currentElevenLabsVoice.toString())).toString();
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/$hash.mp3');
@@ -158,7 +284,7 @@ class TtsService {
         Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
-          'xi-api-key': elevenLabsApiKey! // Dynamically using the loaded key
+          'xi-api-key': elevenLabsApiKey! 
         },
         body: json.encode({"text": text, "model_id": "eleven_flash_v2_5"}),
       );
@@ -177,7 +303,7 @@ class TtsService {
     }
   }
 
-  // ================= GOOGLE =================
+  // ================= GOOGLE WEB =================
 
   static Future<void> _speakGoogleWeb(String text) async {
     _isUsingAudioPlayer = true;
@@ -220,7 +346,7 @@ class TtsService {
   }
 
   // ================= PAUSE / RESUME / STOP =================
-  // (Keep your existing Pause/Resume/Stop/HandleAudioComplete exactly the same)
+  
   static Future<void> pause() async {
     if (_isUsingAudioPlayer) {
       await _audioPlayer.pause();
