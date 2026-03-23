@@ -286,7 +286,17 @@ class TtsService {
           'Content-Type': 'application/json',
           'xi-api-key': elevenLabsApiKey! 
         },
-        body: json.encode({"text": text, "model_id": "eleven_flash_v2_5"}),
+        body: json.encode({
+          "text": text,
+          "model_id": "eleven_flash_v2_5", 
+          "voice_settings": {
+            "stability": 0.4, 
+            "similarity_boost": 0.75,
+            "style": 0.1,
+            "speed": 0.9,
+            "use_speaker_boost": true
+          }
+        }),
       );
 
       if (response.statusCode == 200) {
