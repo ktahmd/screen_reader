@@ -65,11 +65,13 @@ void backgroundMain() {
           case 'update_tts_modes':
             final sentenceIndex = event['sentence_index'] as int;
             final wordIndex = event['word_index'] as int;
+            final String apiKey = event['api_key'] as String;
+            final voiceIndex = event['voice_index'] as int;
             
             TtsService.sentenceMode = TtsVoiceMode.values[sentenceIndex];
             TtsService.wordMode = TtsVoiceMode.values[wordIndex];
-            
-            debugPrint("🤖 BACKGROUND: TTS Modes updated -> Sentence: ${TtsService.sentenceMode.name}, Word: ${TtsService.wordMode.name}");
+            TtsService.elevenLabsApiKey = apiKey.isEmpty ? null : apiKey;
+            TtsService.currentElevenLabsVoice = ElevenLabsVoice.values[voiceIndex];
             break;
           case 'dispose_listener':
             // Example: cancel the subscription if a dispose action is received

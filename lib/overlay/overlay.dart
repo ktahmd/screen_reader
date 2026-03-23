@@ -36,16 +36,18 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
         final action = event['action'];
         if (action == 'update_tts_modes') {
           final sentenceIndex = event['sentence_index'] as int;
-            final wordIndex = event['word_index'] as int;
-            
-            setState(() {
-              TtsService.sentenceMode = TtsVoiceMode.values[sentenceIndex];
-              TtsService.wordMode = TtsVoiceMode.values[wordIndex];
-            });
-            
-            debugPrint("✅ Overlay updated TTS Modes -> Sentence: ${TtsService.sentenceMode.name}, Word: ${TtsService.wordMode.name}");
-            return; // Exit early
-          }
+          final wordIndex = event['word_index'] as int;
+          final String apiKey = event['api_key'] as String;
+          final voiceIndex = event['voice_index'] as int;
+          
+          setState(() {
+            TtsService.sentenceMode = TtsVoiceMode.values[sentenceIndex];
+            TtsService.wordMode = TtsVoiceMode.values[wordIndex];
+            TtsService.elevenLabsApiKey = apiKey.isEmpty ? null : apiKey;
+            TtsService.currentElevenLabsVoice = ElevenLabsVoice.values[voiceIndex];
+          });
+          return;
+        }
 
         if (action == 'result') {
           await FlutterOverlayWindow.moveOverlay(const OverlayPosition(0, 0));
