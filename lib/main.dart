@@ -108,6 +108,7 @@ void main() {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
+            // showPerformanceOverlay: true,
             debugShowCheckedModeBanner: false,
             themeMode: themeProvider.themeMode,
             theme: appTheme(Brightness.light),
@@ -124,6 +125,7 @@ void main() {
 void overlayMain() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MaterialApp(
+    // showPerformanceOverlay: true,
     debugShowCheckedModeBanner: false,
     home: OverlayContentWidget(),
   ));
