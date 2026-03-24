@@ -61,13 +61,13 @@ void backgroundMain() {
                   {'action': 'error', 'errorCode': e.toString()});
             }
             break;
-          case 'update_tts_modes':
+case 'update_tts_modes':
             final sentenceIndex = event['sentence_index'] as int;
             final wordIndex = event['word_index'] as int;
             
             final String apiKey = event['api_key'] as String;
             final String elModelId = event['el_model_id'] as String;
-            final voiceIndex = event['voice_index'] as int;
+            final String elVoiceId = event['el_voice_id'] as String;
             
             final String geminiKey = event['gemini_api_key'] as String;
             final String gemModelId = event['gemini_model_id'] as String;
@@ -78,7 +78,7 @@ void backgroundMain() {
             
             TtsService.elevenLabsApiKey = apiKey.isEmpty ? null : apiKey;
             TtsService.elevenLabsModelId = elModelId;
-            TtsService.currentElevenLabsVoice = ElevenLabsVoice.values[voiceIndex];
+            TtsService.currentElevenLabsVoiceId = elVoiceId;
 
             TtsService.geminiApiKey = geminiKey.isEmpty ? null : geminiKey;
             TtsService.geminiModelId = gemModelId;

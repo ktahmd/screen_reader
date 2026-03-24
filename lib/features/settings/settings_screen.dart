@@ -40,7 +40,6 @@ class SettingsScreen extends StatelessWidget {
         _cuteTile(context, "Offline", "Fast & Data-free", Icons.cloud_off, TtsVoiceMode.offline, current, isWord),
         _cuteTile(context, isWord ? "Google TTS (Recommended)" : "Google TTS", "Standard Web Voice", Icons.g_translate, TtsVoiceMode.google, current, isWord),
         
-        // ElevenLabs Tile
         _cuteTile(
           context, "ElevenLabs", "Advanced AI Voices", Icons.record_voice_over, TtsVoiceMode.elevenlabs, current, isWord,
           trailingWidgets:[
@@ -53,7 +52,6 @@ class SettingsScreen extends StatelessWidget {
           onErrorAction: () => _showElevenLabsDialog(context, settings),
         ),
         
-        // Gemini Tile
         _cuteTile(
           context, "Google Gemini", "AI Expressive Voices", Icons.auto_awesome_mosaic, TtsVoiceMode.gemini, current, isWord,
           trailingWidgets:[
@@ -113,27 +111,45 @@ class ElevenLabsConfigDialog extends StatefulWidget {
 
 class _ElevenLabsConfigDialogState extends State<ElevenLabsConfigDialog> {
   late TextEditingController _keyController;
-  late ElevenLabsVoice _selectedVoice;
+  
   String? _selectedModelId;
+  String? _selectedVoiceId;
+  
   List<Map<String, String>> _availableModels =[];
+  List<Map<String, String>> _availableVoices =[];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _keyController = TextEditingController(text: widget.settings.elevenLabsApiKey);
-    _selectedVoice = widget.settings.elevenLabsVoice;
     _selectedModelId = widget.settings.elevenLabsModelId;
-    if (_keyController.text.isNotEmpty) _fetchModels();
+    _selectedVoiceId = widget.settings.elevenLabsVoiceId;
+    if (_keyController.text.isNotEmpty) _fetchConfigData();
   }
 
-  Future<void> _fetchModels() async {
+  Future<void> _fetchConfigData() async {
     setState(() => _isLoading = true);
-    final models = await TtsService.fetchElevenLabsModels(_keyController.text.trim());
+    final key = _keyController.text.trim();
+    
+    // Fetch both Models and Voices concurrently
+    final results = await Future.wait([
+      TtsService.fetchElevenLabsModels(key),
+      TtsService.fetchElevenLabsVoices(key),
+    ]);
+    
+    final models = results[0];
+    final voices = results[1];
+
     setState(() {
       _availableModels = models;
+      _availableVoices = voices;
+      
       if (models.isNotEmpty && !models.any((m) => m['id'] == _selectedModelId)) {
         _selectedModelId = models.first['id'];
+      }
+      if (voices.isNotEmpty && !voices.any((v) => v['id'] == _selectedVoiceId)) {
+        _selectedVoiceId = voices.first['id'];
       }
       _isLoading = false;
     });
@@ -152,26 +168,30 @@ class _ElevenLabsConfigDialogState extends State<ElevenLabsConfigDialog> {
               decoration: InputDecoration(
                 labelText: "API Key",
                 border: const OutlineInputBorder(),
-                suffixIcon: IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchModels),
+                suffixIcon: IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchConfigData),
               ),
             ),
             const SizedBox(height: 15),
             if (_isLoading) const CircularProgressIndicator()
-            else if (_availableModels.isNotEmpty)
-              DropdownButtonFormField<String>(
-                value: _selectedModelId,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: "Model", border: OutlineInputBorder()),
-                items: _availableModels.map((m) => DropdownMenuItem(value: m['id'], child: Text(m['name']!))).toList(),
-                onChanged: (val) => setState(() => _selectedModelId = val),
-              ),
-            const SizedBox(height: 15),
-            DropdownButtonFormField<ElevenLabsVoice>(
-              value: _selectedVoice,
-              decoration: const InputDecoration(labelText: "Voice", border: OutlineInputBorder()),
-              items: ElevenLabsVoice.values.map((v) => DropdownMenuItem(value: v, child: Text(v.name.toUpperCase()))).toList(),
-              onChanged: (val) { if (val != null) setState(() => _selectedVoice = val); },
-            ),
+            else ...[
+              if (_availableModels.isNotEmpty)
+                DropdownButtonFormField<String>(
+                  value: _selectedModelId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: "Model", border: OutlineInputBorder()),
+                  items: _availableModels.map((m) => DropdownMenuItem(value: m['id'], child: Text(m['name']!))).toList(),
+                  onChanged: (val) => setState(() => _selectedModelId = val),
+                ),
+              const SizedBox(height: 15),
+              if (_availableVoices.isNotEmpty)
+                DropdownButtonFormField<String>(
+                  value: _selectedVoiceId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: "Voice", border: OutlineInputBorder()),
+                  items: _availableVoices.map((v) => DropdownMenuItem(value: v['id'], child: Text(v['name']!))).toList(),
+                  onChanged: (val) => setState(() => _selectedVoiceId = val),
+                ),
+            ]
           ],
         ),
       ),
@@ -179,7 +199,11 @@ class _ElevenLabsConfigDialogState extends State<ElevenLabsConfigDialog> {
         TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
         ElevatedButton(
           onPressed: () {
-            widget.settings.updateElevenLabsConfig(_keyController.text.trim(), _selectedModelId ?? "eleven_flash_v2_5", _selectedVoice);
+            widget.settings.updateElevenLabsConfig(
+              _keyController.text.trim(), 
+              _selectedModelId ?? "eleven_flash_v2_5", 
+              _selectedVoiceId ?? "pNInz6obpgDQGcFmaJgB"
+            );
             Navigator.pop(context);
           },
           child: const Text("Save"),

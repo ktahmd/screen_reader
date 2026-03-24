@@ -40,7 +40,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
           
           final String apiKey = event['api_key'] as String;
           final String elModelId = event['el_model_id'] as String;
-          final voiceIndex = event['voice_index'] as int;
+          final String elVoiceId = event['el_voice_id'] as String;
           
           final String geminiKey = event['gemini_api_key'] as String;
           final String gemModelId = event['gemini_model_id'] as String;
@@ -52,7 +52,7 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
             
             TtsService.elevenLabsApiKey = apiKey.isEmpty ? null : apiKey;
             TtsService.elevenLabsModelId = elModelId;
-            TtsService.currentElevenLabsVoice = ElevenLabsVoice.values[voiceIndex];
+            TtsService.currentElevenLabsVoiceId = elVoiceId;
 
             TtsService.geminiApiKey = geminiKey.isEmpty ? null : geminiKey;
             TtsService.geminiModelId = gemModelId;
@@ -213,7 +213,7 @@ Future<void> _initOverlaySettings() async {
     
     TtsService.elevenLabsApiKey = prefs.getString('elevenlabs_api_key');
     TtsService.elevenLabsModelId = prefs.getString('elevenlabs_model_id') ?? "eleven_flash_v2_5";
-    int elVoiceIdx = prefs.getInt('elevenlabs_voice') ?? ElevenLabsVoice.elisabeth.index;
+    TtsService.currentElevenLabsVoiceId = prefs.getString('elevenlabs_voice_id') ?? "pNInz6obpgDQGcFmaJgB";
     
     TtsService.geminiApiKey = prefs.getString('gemini_api_key');
     TtsService.geminiModelId = prefs.getString('gemini_model_id') ?? "gemini-2.5-flash";
@@ -222,7 +222,6 @@ Future<void> _initOverlaySettings() async {
     setState(() {
       TtsService.sentenceMode = TtsVoiceMode.values[sentenceIndex];
       TtsService.wordMode = TtsVoiceMode.values[wordIndex];
-      TtsService.currentElevenLabsVoice = ElevenLabsVoice.values[elVoiceIdx];
       TtsService.currentGeminiVoice = GeminiVoice.values[gemVoiceIdx];
     });
   }

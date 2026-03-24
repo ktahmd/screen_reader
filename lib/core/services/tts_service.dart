@@ -12,7 +12,6 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 
 enum AppTtsState { idle, loading, playing, paused }
 enum TtsVoiceMode { auto, offline, google, elevenlabs, gemini }
-enum ElevenLabsVoice { adam, bella, elisabeth }
 enum GeminiVoice { puck, charon, kore, fenrir, aoede, zephyr }
 
 class TtsService {
@@ -36,19 +35,13 @@ class TtsService {
 
   // ElevenLabs Config
   static String? elevenLabsApiKey;
-  static String elevenLabsModelId = "eleven_flash_v2_5"; // Default
-  static ElevenLabsVoice currentElevenLabsVoice = ElevenLabsVoice.elisabeth;
+  static String elevenLabsModelId = "eleven_flash_v2_5"; 
+  static String currentElevenLabsVoiceId = "pNInz6obpgDQGcFmaJgB"; // Default: Adam
 
   // Gemini Config
   static String? geminiApiKey;
-  static String geminiModelId = "gemini-2.5-flash"; // Default
+  static String geminiModelId = "gemini-2.5-flash"; 
   static GeminiVoice currentGeminiVoice = GeminiVoice.zephyr;
-
-  static const Map<ElevenLabsVoice, String> _elevenLabsVoiceIds = {
-    ElevenLabsVoice.adam: "pNInz6obpgDQGcFmaJgB",
-    ElevenLabsVoice.bella: "hpp4J3VqNfWAUOO0d1Us",
-    ElevenLabsVoice.elisabeth: "9tDJMfriv2Hg6KGY603n",
-  };
 
   // ================= INIT & UTILS =================
   static Future<void> init() async {
@@ -65,7 +58,7 @@ class TtsService {
 
   static String _normalize(String text) => text.trim();
 
-  // ================= FETCH DYNAMIC MODELS =================
+  // ================= FETCH DYNAMIC DATA =================
 
   static Future<List<Map<String, String>>> fetchElevenLabsModels(String apiKey) async {
     try {
@@ -85,6 +78,27 @@ class TtsService {
       }
     } catch (e) {
       debugPrint("Error fetching ElevenLabs models: $e");
+    }
+    return[];
+  }
+
+  // Fetch Dynamic Voices from ElevenLabs
+  static Future<List<Map<String, String>>> fetchElevenLabsVoices(String apiKey) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://api.elevenlabs.io/v1/voices'),
+        headers: {'xi-api-key': apiKey},
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List voices = data['voices'];
+        return voices.map<Map<String, String>>((v) => {
+          'id': v['voice_id'].toString(),
+          'name': v['name'].toString(),
+        }).toList();
+      }
+    } catch (e) {
+      debugPrint("Error fetching ElevenLabs voices: $e");
     }
     return[];
   }
@@ -201,7 +215,6 @@ class TtsService {
       return;
     }
 
-    // Dynamic Model ID injection here
     final url = 'https://generativelanguage.googleapis.com/v1beta/models/$geminiModelId:generateContent?key=$geminiApiKey';
 
     try {
@@ -281,8 +294,9 @@ class TtsService {
     }
     _isUsingAudioPlayer = true;
     _isPlaying = true;
-    final voiceId = _elevenLabsVoiceIds[currentElevenLabsVoice]!;
-    final hash = sha256.convert(utf8.encode(text + elevenLabsModelId + currentElevenLabsVoice.toString())).toString();
+    
+    final voiceId = currentElevenLabsVoiceId; // Using dynamic ID
+    final hash = sha256.convert(utf8.encode(text + elevenLabsModelId + voiceId)).toString();
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/$hash.mp3');
 
