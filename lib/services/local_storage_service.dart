@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/pref_keys.dart';
 import '../core/constants/default_settings.dart';
-import 'tts/tts_service_core.dart';
+import 'tts/tts_service.dart';
 
 class LocalStorageService {
   final SharedPreferences _prefs;
@@ -70,7 +70,6 @@ class LocalStorageService {
       String key, String modelId, String voice) async {
     await _prefs.setString(PrefKeys.geminiApiKey, key);
     await _prefs.setString(PrefKeys.geminiModelTextToSpeechId, modelId);
-    debugPrint("XXXXXXXXX: ${_prefs.getString("gemini_model_tts_id")}");
     await _prefs.setString(PrefKeys.geminiVoice, voice);
   }
 }

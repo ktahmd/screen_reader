@@ -6,7 +6,7 @@ class DefaultSettings {
   static const String elevenLabsVoiceId = "pNInz6obpgDQGcFmaJgB"; 
 
   // Gemini Defaults
-  static const String geminiModelTextToSpeechId = "gemini-2.5-flash-tts-preview";
+  static const String geminiModelTextToSpeechId = "gemini-2.5-flash-preview-tts";
   static const String geminiModelId = "gemini-3.1-flash-preview";
   static const String geminiDefaultVoice = GeminiVoices.voice1; 
 }

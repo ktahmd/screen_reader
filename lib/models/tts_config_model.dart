@@ -1,5 +1,5 @@
 import '../core/constants/default_settings.dart';
-import '../services/tts/tts_service_core.dart';
+import '../services/tts/tts_service.dart';
 
 class TtsSettingsModel {
   final TtsVoiceMode sentenceMode;

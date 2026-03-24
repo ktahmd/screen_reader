@@ -5,7 +5,7 @@ import 'models/ocr_word_model.dart';
 import 'models/tts_config_model.dart';
 import 'services/ocr_service.dart';
 import 'services/platform_channel_service.dart';
-import 'services/tts/tts_service_core.dart';
+import 'services/tts/tts_service.dart';
 
 class BackgroundIsolateHandler {
   static void start() {

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../../../../providers/settings_provider.dart';
-import '../../../../services/tts/tts_service_core.dart';
+import '../../../../services/tts/tts_service.dart';
 
 class SettingsTile extends StatelessWidget {
   final String title;

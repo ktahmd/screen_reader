@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/default_settings.dart';
 import '../../../../providers/settings_provider.dart';
-import '../../../../services/tts/tts_service_core.dart';
+import '../../../../services/tts/tts_service.dart';
 
 
 class GeminiConfigDialog extends StatefulWidget {

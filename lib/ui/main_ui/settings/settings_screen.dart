@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/settings_provider.dart';
-import '../../../services/tts/tts_service_core.dart';
+import '../../../services/tts/tts_service.dart';
 import 'widgets/settings_tile.dart';
 import 'widgets/eleven_labs_dialog.dart';
 import 'widgets/gemini_dialog.dart';

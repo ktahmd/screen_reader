@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/default_settings.dart';
 import '../../services/translator_service.dart';
-import '../../services/tts/tts_service_core.dart';
+import '../../services/tts/tts_service.dart';
 
 class OverlayView extends StatefulWidget {
   const OverlayView({super.key});
@@ -44,7 +44,7 @@ class _OverlayViewState extends State<OverlayView> {
           final String elVoiceId = event['el_voice_id']?.toString() ?? '';
 
           final String geminiKey = event['gemini_api_key']?.toString() ?? '';
-          final String gemModelTssId = event['gemini_model_id_tts']?.toString() ?? '';
+          final String gemModelTssId = event['gemini_model_tts_id']?.toString() ?? '';
           final String gemVoiceName = event['gemini_voice_name']?.toString() ?? DefaultSettings.geminiDefaultVoice;
           
           setState(() {
@@ -217,7 +217,7 @@ Future<void> _initOverlaySettings() async {
     TtsService.currentElevenLabsVoiceId = prefs.getString('elevenlabs_voice_id') ?? "pNInz6obpgDQGcFmaJgB";
     
     TtsService.geminiApiKey = prefs.getString('gemini_api_key');
-    TtsService.geminiModelTextToSpeechId = prefs.getString('gemini_model_id_tts') ?? "gemini-2.5-flash-tts-preview";
+    TtsService.geminiModelTextToSpeechId = prefs.getString('gemini_model_tts_id') ?? "gemini-2.5-flash-preview-tts";
     String gemVoiceN = prefs.getString('gemini_voice_name') ?? DefaultSettings.geminiDefaultVoice;
 
     setState(() {
