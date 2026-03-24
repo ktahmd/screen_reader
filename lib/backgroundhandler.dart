@@ -61,7 +61,7 @@ class BackgroundIsolateHandler {
     TtsService.elevenLabsModelId = settings.elevenLabsModelId;
     TtsService.currentElevenLabsVoiceId = settings.elevenLabsVoiceId;
     TtsService.geminiApiKey = settings.geminiApiKey;
-    TtsService.geminiModelId = settings.geminiModelId;
+    TtsService.geminiModelTextToSpeechId = settings.geminiModelTextToSpeechId;
     TtsService.currentGeminiVoice = settings.geminiVoice;
   }
 }

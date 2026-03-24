@@ -1,3 +1,4 @@
+import '../core/constants/default_settings.dart';
 import '../services/tts/tts_service_core.dart';
 
 class TtsSettingsModel {
@@ -9,8 +10,8 @@ class TtsSettingsModel {
   final String elevenLabsVoiceId;
 
   final String? geminiApiKey;
-  final String geminiModelId;
-  final GeminiVoice geminiVoice;
+  final String geminiModelTextToSpeechId;
+  final String geminiVoice;
 
   TtsSettingsModel({
     required this.sentenceMode,
@@ -19,7 +20,7 @@ class TtsSettingsModel {
     required this.elevenLabsModelId,
     required this.elevenLabsVoiceId,
     this.geminiApiKey,
-    required this.geminiModelId,
+    required this.geminiModelTextToSpeechId,
     required this.geminiVoice,
   });
 
@@ -32,8 +33,8 @@ class TtsSettingsModel {
       'el_model_id': elevenLabsModelId,
       'el_voice_id': elevenLabsVoiceId,
       'gemini_api_key': geminiApiKey ?? "",
-      'gemini_model_id': geminiModelId,
-      'gemini_voice_index': geminiVoice.index,
+      'gemini_model_tts_id': geminiModelTextToSpeechId,
+      'gemini_voice_name_index': geminiVoice,
     };
   }
 
@@ -45,8 +46,8 @@ class TtsSettingsModel {
       elevenLabsModelId: map['el_model_id'] as String,
       elevenLabsVoiceId: map['el_voice_id'] as String,
       geminiApiKey: (map['gemini_api_key'] as String).isEmpty ? null : map['gemini_api_key'],
-      geminiModelId: map['gemini_model_id'] as String,
-      geminiVoice: GeminiVoice.values[map['gemini_voice_index'] as int],
+      geminiModelTextToSpeechId: map['gemini_model_tts_id'] as String,
+      geminiVoice: map['gemini_voice_name_name'] ?? DefaultSettings.geminiDefaultVoice,
     );
   }
 }

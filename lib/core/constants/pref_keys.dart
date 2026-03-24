@@ -8,6 +8,7 @@ class PrefKeys {
   static const String elevenLabsVoiceId = 'elevenlabs_voice_id';
 
   static const String geminiApiKey = 'gemini_api_key';
-  static const String geminiModelId = 'gemini_model_id';
-  static const String geminiVoice = 'gemini_voice';
+  static const String geminiModelTextToSpeechId = 'gemini_model_tts_id';
+  static const String geminiModelId = 'gemini_model_id'; 
+  static const String geminiVoice = 'gemini_voice_name';
 }

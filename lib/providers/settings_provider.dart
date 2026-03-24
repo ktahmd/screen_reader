@@ -14,8 +14,8 @@ class SettingsProvider extends ChangeNotifier {
   late String _elevenLabsModelId;
   late String _elevenLabsVoiceId;
   String? _geminiApiKey;
-  late String _geminiModelId;
-  late GeminiVoice _geminiVoice;
+  late String _geminiModelTextToSpeechId;
+  late String _geminiVoice; 
 
   TtsVoiceMode get sentenceMode => _sentenceMode;
   TtsVoiceMode get wordMode => _wordMode;
@@ -23,8 +23,8 @@ class SettingsProvider extends ChangeNotifier {
   String get elevenLabsModelId => _elevenLabsModelId;
   String get elevenLabsVoiceId => _elevenLabsVoiceId;
   String? get geminiApiKey => _geminiApiKey;
-  String get geminiModelId => _geminiModelId;
-  GeminiVoice get geminiVoice => _geminiVoice;
+  String get geminiModelTextToSpeechId => _geminiModelTextToSpeechId;
+  String get geminiVoice => _geminiVoice;
 
   SettingsProvider(this._storageService) {
     _loadSettings();
@@ -39,7 +39,7 @@ class SettingsProvider extends ChangeNotifier {
     _elevenLabsVoiceId = _storageService.getElevenLabsVoiceId();
 
     _geminiApiKey = _storageService.getGeminiApiKey();
-    _geminiModelId = _storageService.getGeminiModelId();
+    _geminiModelTextToSpeechId = _storageService.getGeminiModelTextToSpeechId();
     _geminiVoice = _storageService.getGeminiVoice();
 
     _syncToStaticTtsService();
@@ -53,7 +53,7 @@ class SettingsProvider extends ChangeNotifier {
     TtsService.elevenLabsModelId = _elevenLabsModelId;
     TtsService.currentElevenLabsVoiceId = _elevenLabsVoiceId;
     TtsService.geminiApiKey = _geminiApiKey;
-    TtsService.geminiModelId = _geminiModelId;
+    TtsService.geminiModelTextToSpeechId = _geminiModelTextToSpeechId;
     TtsService.currentGeminiVoice = _geminiVoice;
   }
 
@@ -79,7 +79,7 @@ class SettingsProvider extends ChangeNotifier {
     _elevenLabsApiKey = key;
     _elevenLabsModelId = modelId;
     _elevenLabsVoiceId = voiceId;
-    
+
     await _storageService.saveElevenLabsConfig(key, modelId, voiceId);
     
     _syncToStaticTtsService();
@@ -87,9 +87,9 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
   
-  Future<void> updateGeminiConfig(String key, String modelId, GeminiVoice voice) async {
+  Future<void> updateGeminiConfig(String key, String modelId, String voice) async {
     _geminiApiKey = key;
-    _geminiModelId = modelId;
+    _geminiModelTextToSpeechId = modelId;
     _geminiVoice = voice;
 
     await _storageService.saveGeminiConfig(key, modelId, voice);
@@ -107,7 +107,7 @@ class SettingsProvider extends ChangeNotifier {
       elevenLabsModelId: _elevenLabsModelId,
       elevenLabsVoiceId: _elevenLabsVoiceId,
       geminiApiKey: _geminiApiKey,
-      geminiModelId: _geminiModelId,
+      geminiModelTextToSpeechId: _geminiModelTextToSpeechId,
       geminiVoice: _geminiVoice,
     );
     

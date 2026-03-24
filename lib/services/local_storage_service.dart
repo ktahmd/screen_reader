@@ -1,37 +1,55 @@
-// lib/services/local_storage_service.dart
+import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/pref_keys.dart';
+import '../core/constants/default_settings.dart';
 import 'tts/tts_service_core.dart';
-
 
 class LocalStorageService {
   final SharedPreferences _prefs;
   LocalStorageService(this._prefs);
 
-  // --- Getters ---
+  // ================= GETTERS =================
+
+  // --- TTS Engine Modes ---
   TtsVoiceMode getSentenceMode() {
-    final index = _prefs.getInt(PrefKeys.sentenceMode) ?? TtsVoiceMode.auto.index;
+    final index =
+        _prefs.getInt(PrefKeys.sentenceMode) ?? TtsVoiceMode.auto.index;
     return TtsVoiceMode.values[index];
   }
 
   TtsVoiceMode getWordMode() {
-    final index = _prefs.getInt(PrefKeys.wordMode) ?? TtsVoiceMode.offline.index;
+    final index =
+        _prefs.getInt(PrefKeys.wordMode) ?? TtsVoiceMode.offline.index;
     return TtsVoiceMode.values[index];
   }
 
+  // --- ElevenLabs Config ---
   String? getElevenLabsApiKey() => _prefs.getString(PrefKeys.elevenLabsApiKey);
-  String getElevenLabsModelId() => _prefs.getString(PrefKeys.elevenLabsModelId) ?? "eleven_flash_v2_5";
-  String getElevenLabsVoiceId() => _prefs.getString(PrefKeys.elevenLabsVoiceId) ?? "pNInz6obpgDQGcFmaJgB"; //adam's voice as default
-  
+
+  String getElevenLabsModelId() =>
+      _prefs.getString(PrefKeys.elevenLabsModelId) ??
+      DefaultSettings.elevenLabsModelId;
+
+  String getElevenLabsVoiceId() =>
+      _prefs.getString(PrefKeys.elevenLabsVoiceId) ??
+      DefaultSettings.elevenLabsVoiceId;
+
+  // --- Gemini Config ---
   String? getGeminiApiKey() => _prefs.getString(PrefKeys.geminiApiKey);
-  String getGeminiModelId() => _prefs.getString(PrefKeys.geminiModelId) ?? "gemini-2.5-flash-perview-tts";
-  GeminiVoice getGeminiVoice() {
-      final index = _prefs.getInt(PrefKeys.geminiVoice) ?? GeminiVoice.zephyr.index;
-      return GeminiVoice.values[index];
+
+  // UPDATED: Using the new naming convention
+  String getGeminiModelTextToSpeechId() =>
+      _prefs.getString(PrefKeys.geminiModelTextToSpeechId) ??
+      DefaultSettings.geminiModelTextToSpeechId;
+
+  // REFACTORED: Now returns a String (voice name) instead of an enum index
+  String getGeminiVoice() {
+    return _prefs.getString(PrefKeys.geminiVoice) ??
+        DefaultSettings.geminiDefaultVoice;
   }
 
+  // ================= SETTERS =================
 
-  // --- Setters ---
   Future<void> saveSentenceMode(TtsVoiceMode mode) async {
     await _prefs.setInt(PrefKeys.sentenceMode, mode.index);
   }
@@ -39,16 +57,20 @@ class LocalStorageService {
   Future<void> saveWordMode(TtsVoiceMode mode) async {
     await _prefs.setInt(PrefKeys.wordMode, mode.index);
   }
-  
-  Future<void> saveElevenLabsConfig(String key, String modelId, String voiceId) async {
+
+  Future<void> saveElevenLabsConfig(
+      String key, String modelId, String voiceId) async {
     await _prefs.setString(PrefKeys.elevenLabsApiKey, key);
     await _prefs.setString(PrefKeys.elevenLabsModelId, modelId);
     await _prefs.setString(PrefKeys.elevenLabsVoiceId, voiceId);
   }
 
-  Future<void> saveGeminiConfig(String key, String modelId, GeminiVoice voice) async {
+  // UPDATED: Parameters now use String for modelId and voice
+  Future<void> saveGeminiConfig(
+      String key, String modelId, String voice) async {
     await _prefs.setString(PrefKeys.geminiApiKey, key);
-    await _prefs.setString(PrefKeys.geminiModelId, modelId);
-    await _prefs.setInt(PrefKeys.geminiVoice, voice.index);
+    await _prefs.setString(PrefKeys.geminiModelTextToSpeechId, modelId);
+    debugPrint("XXXXXXXXX: ${_prefs.getString("gemini_model_tts_id")}");
+    await _prefs.setString(PrefKeys.geminiVoice, voice);
   }
 }

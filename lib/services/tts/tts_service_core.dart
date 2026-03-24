@@ -10,22 +10,27 @@ import 'package:crypto/crypto.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
+import '../../core/constants/default_settings.dart';
+
 enum AppTtsState { idle, loading, playing, paused }
+
 enum TtsVoiceMode { auto, offline, google, elevenlabs, gemini }
-enum GeminiVoice { puck, charon, kore, fenrir, aoede, zephyr }
+// enum GeminiVoice { puck, charon, kore, fenrir, aoede, zephyr }
 
 class TtsService {
+  static String currentGeminiVoice = DefaultSettings.geminiDefaultVoice;
   static final AudioPlayer _audioPlayer = AudioPlayer();
   static final FlutterTts _flutterTts = FlutterTts();
   static final Connectivity _connectivity = Connectivity();
 
-  static ValueNotifier<AppTtsState> stateNotifier = ValueNotifier(AppTtsState.idle);
+  static ValueNotifier<AppTtsState> stateNotifier =
+      ValueNotifier(AppTtsState.idle);
 
   static bool _isProcessing = false;
   static bool _isUsingAudioPlayer = false;
   static bool _isPlaying = false;
 
-  static List<String> _googleChunks =[];
+  static List<String> _googleChunks = [];
   static int _currentChunkIndex = 0;
   static bool _isReadingGoogle = false;
   static String _lastSpokenText = "";
@@ -35,13 +40,14 @@ class TtsService {
 
   // ElevenLabs Config
   static String? elevenLabsApiKey;
-  static String elevenLabsModelId = "eleven_flash_v2_5"; 
-  static String currentElevenLabsVoiceId = "pNInz6obpgDQGcFmaJgB"; // Default: Adam
+  static String elevenLabsModelId = "eleven_flash_v2_5";
+  static String currentElevenLabsVoiceId =
+      "pNInz6obpgDQGcFmaJgB"; // Default: Adam
 
   // Gemini Config
   static String? geminiApiKey;
-  static String geminiModelId = "gemini-2.5-flash-perview-tts"; 
-  static GeminiVoice currentGeminiVoice = GeminiVoice.zephyr;
+  static String geminiModelTextToSpeechId = "gemini-2.5-flash-tts-preview";
+  // static GeminiVoice currentGeminiVoice = GeminiVoice.zephyr;
 
   // ================= INIT & UTILS =================
   static Future<void> init() async {
@@ -60,7 +66,8 @@ class TtsService {
 
   // ================= FETCH DYNAMIC DATA =================
 
-  static Future<List<Map<String, String>>> fetchElevenLabsModels(String apiKey) async {
+  static Future<List<Map<String, String>>> fetchElevenLabsModels(
+      String apiKey) async {
     try {
       final response = await http.get(
         Uri.parse('https://api.elevenlabs.io/v1/models'),
@@ -79,11 +86,12 @@ class TtsService {
     } catch (e) {
       debugPrint("Error fetching ElevenLabs models: $e");
     }
-    return[];
+    return [];
   }
 
   // Fetch Dynamic Voices from ElevenLabs
-  static Future<List<Map<String, String>>> fetchElevenLabsVoices(String apiKey) async {
+  static Future<List<Map<String, String>>> fetchElevenLabsVoices(
+      String apiKey) async {
     try {
       final response = await http.get(
         Uri.parse('https://api.elevenlabs.io/v1/voices'),
@@ -92,29 +100,35 @@ class TtsService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List voices = data['voices'];
-        return voices.map<Map<String, String>>((v) => {
-          'id': v['voice_id'].toString(),
-          'name': v['name'].toString(),
-        }).toList();
+        return voices
+            .map<Map<String, String>>((v) => {
+                  'id': v['voice_id'].toString(),
+                  'name': v['name'].toString(),
+                })
+            .toList();
       }
     } catch (e) {
       debugPrint("Error fetching ElevenLabs voices: $e");
     }
-    return[];
+    return [];
   }
 
-  static Future<List<Map<String, String>>> fetchGeminiModels(String apiKey) async {
+  static Future<List<Map<String, String>>> fetchGeminiModels(
+      String apiKey) async {
     try {
       final response = await http.get(
-        Uri.parse('https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey'),
+        Uri.parse(
+            'https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List models = data['models'];
         return models
-            .where((m) => m['name'].toString().contains('tts') && 
-                          m['supportedGenerationMethods'] != null && 
-                          (m['supportedGenerationMethods'] as List).contains('generateContent'))
+            .where((m) =>
+                m['name'].toString().contains('tts') &&
+                m['supportedGenerationMethods'] != null &&
+                (m['supportedGenerationMethods'] as List)
+                    .contains('generateContent'))
             .map<Map<String, String>>((m) => {
                   'id': m['name'].toString().replaceFirst('models/', ''),
                   'name': m['displayName'].toString(),
@@ -124,7 +138,7 @@ class TtsService {
     } catch (e) {
       debugPrint("Error fetching Gemini models: $e");
     }
-    return[];
+    return [];
   }
 
   // ================= MAIN SPEAK =================
@@ -141,14 +155,15 @@ class TtsService {
     stateNotifier.value = AppTtsState.loading;
     final normalized = _normalize(text.toLowerCase());
     TtsVoiceMode activeMode = isWord ? wordMode : sentenceMode;
-    
+
     try {
       await _audioPlayer.stop();
       await _flutterTts.stop();
       bool online = await isOnline();
 
       if (!online && activeMode != TtsVoiceMode.offline) {
-        Fluttertoast.showToast(msg: "No Internet Connection. Using Offline mode.");
+        Fluttertoast.showToast(
+            msg: "No Internet Connection. Using Offline mode.");
         await _speakOffline(normalized);
         return;
       }
@@ -203,8 +218,10 @@ class TtsService {
 
     _isUsingAudioPlayer = true;
     _isPlaying = true;
-    final voiceName = currentGeminiVoice.name;
-    final hash = sha256.convert(utf8.encode("${text}gemini_$voiceName")).toString();
+    final String voiceName = currentGeminiVoice.replaceFirst(
+        currentGeminiVoice[0], currentGeminiVoice[0].toUpperCase());
+    final hash =
+        sha256.convert(utf8.encode("${text}gemini_$voiceName")).toString();
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/$hash.wav');
 
@@ -215,17 +232,20 @@ class TtsService {
       return;
     }
 
-    final url = 'https://generativelanguage.googleapis.com/v1beta/models/$geminiModelId:generateContent?key=$geminiApiKey';
-
+    final url ='https://generativelanguage.googleapis.com/v1beta/models/$geminiModelTextToSpeechId:generateContent?key=$geminiApiKey';
+    //TODO: geminiModelTextToSpeechId return null for some reason
+    debugPrint("XXXXXXXXXXXXXXXXXXXXXXXXXXX= ${geminiModelTextToSpeechId}");
     try {
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          "contents":[
+          "contents": [
             {
               "role": "user",
-              "parts": [ {"text": text} ]
+              "parts": [
+                {"text": text}
+              ]
             }
           ],
           "generationConfig": {
@@ -233,7 +253,8 @@ class TtsService {
             "speech_config": {
               "voice_config": {
                 "prebuilt_voice_config": {
-                  "voice_name": voiceName.replaceFirst(voiceName[0], voiceName[0].toUpperCase())
+                  "voice_name": voiceName.replaceFirst(
+                      voiceName[0], voiceName[0].toUpperCase())
                 }
               }
             }
@@ -243,11 +264,12 @@ class TtsService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final base64Audio = data['candidates'][0]['content']['parts'][0]['inlineData']['data'];
+        final base64Audio =
+            data['candidates'][0]['content']['parts'][0]['inlineData']['data'];
         Uint8List pcmBytes = base64Decode(base64Audio);
         Uint8List wavBytes = _addWavHeader(pcmBytes);
         await file.writeAsBytes(wavBytes);
-        
+
         stateNotifier.value = AppTtsState.playing;
         await _audioPlayer.play(DeviceFileSource(file.path));
       } else {
@@ -266,10 +288,19 @@ class TtsService {
     int channels = 1, sampleRate = 24000, byteRate = sampleRate * channels * 2;
     int totalDataLen = pcmData.length, totalAudioLen = totalDataLen + 36;
     var header = ByteData(44);
-    header.setUint8(0, 82); header.setUint8(1, 73); header.setUint8(2, 70); header.setUint8(3, 70);
+    header.setUint8(0, 82);
+    header.setUint8(1, 73);
+    header.setUint8(2, 70);
+    header.setUint8(3, 70);
     header.setUint32(4, totalAudioLen, Endian.little);
-    header.setUint8(8, 87); header.setUint8(9, 65); header.setUint8(10, 86); header.setUint8(11, 69);
-    header.setUint8(12, 102); header.setUint8(13, 109); header.setUint8(14, 116); header.setUint8(15, 32);
+    header.setUint8(8, 87);
+    header.setUint8(9, 65);
+    header.setUint8(10, 86);
+    header.setUint8(11, 69);
+    header.setUint8(12, 102);
+    header.setUint8(13, 109);
+    header.setUint8(14, 116);
+    header.setUint8(15, 32);
     header.setUint32(16, 16, Endian.little);
     header.setUint16(20, 1, Endian.little);
     header.setUint16(22, channels, Endian.little);
@@ -277,7 +308,10 @@ class TtsService {
     header.setUint32(28, byteRate, Endian.little);
     header.setUint16(32, 2, Endian.little);
     header.setUint16(34, 16, Endian.little);
-    header.setUint8(36, 100); header.setUint8(37, 97); header.setUint8(38, 116); header.setUint8(39, 97);
+    header.setUint8(36, 100);
+    header.setUint8(37, 97);
+    header.setUint8(38, 116);
+    header.setUint8(39, 97);
     header.setUint32(40, totalDataLen, Endian.little);
     var b = BytesBuilder();
     b.add(header.buffer.asUint8List());
@@ -288,15 +322,18 @@ class TtsService {
   // ================= ELEVENLABS =================
   static Future<void> _speakElevenLabs(String text) async {
     if (elevenLabsApiKey == null || elevenLabsApiKey!.isEmpty) {
-      Fluttertoast.showToast(msg: "API Key missing. Falling back to Google TTS.");
+      Fluttertoast.showToast(
+          msg: "API Key missing. Falling back to Google TTS.");
       await _speakGoogleWeb(text);
       return;
     }
     _isUsingAudioPlayer = true;
     _isPlaying = true;
-    
+
     final voiceId = currentElevenLabsVoiceId; // Using dynamic ID
-    final hash = sha256.convert(utf8.encode(text + elevenLabsModelId + voiceId)).toString();
+    final hash = sha256
+        .convert(utf8.encode(text + elevenLabsModelId + voiceId))
+        .toString();
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/$hash.mp3');
 
@@ -313,13 +350,13 @@ class TtsService {
         Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
-          'xi-api-key': elevenLabsApiKey! 
+          'xi-api-key': elevenLabsApiKey!
         },
         body: json.encode({
           "text": text,
-          "model_id": elevenLabsModelId, 
+          "model_id": elevenLabsModelId,
           "voice_settings": {
-            "stability": 0.4, 
+            "stability": 0.4,
             "similarity_boost": 0.75,
             "style": 0.1,
             "speed": 0.9,
@@ -356,7 +393,8 @@ class TtsService {
     if (!_isReadingGoogle || _currentChunkIndex >= _googleChunks.length) return;
     final chunk = _googleChunks[_currentChunkIndex];
     try {
-      final url = "https://translate.google.com/translate_tts?ie=UTF-8&tl=en-US&client=tw-ob&q=${Uri.encodeComponent(chunk)}";
+      final url =
+          "https://translate.google.com/translate_tts?ie=UTF-8&tl=en-US&client=tw-ob&q=${Uri.encodeComponent(chunk)}";
       await _audioPlayer.stop();
       await _audioPlayer.play(UrlSource(url));
     } catch (e) {
@@ -366,7 +404,7 @@ class TtsService {
 
   // ================= OFFLINE =================
   static Future<void> _speakOffline(String text) async {
-    _isUsingAudioPlayer = false; 
+    _isUsingAudioPlayer = false;
     _isPlaying = true;
     try {
       await _flutterTts.stop();
@@ -374,7 +412,7 @@ class TtsService {
       await _flutterTts.awaitSpeakCompletion(true);
       await _flutterTts.speak(text);
       _isPlaying = false;
-      stateNotifier.value = AppTtsState.idle; 
+      stateNotifier.value = AppTtsState.idle;
     } catch (e) {
       _isPlaying = false;
       stateNotifier.value = AppTtsState.idle;
@@ -430,6 +468,9 @@ class TtsService {
   }
 
   static List<String> _splitIntoSentences(String text) {
-    return text.split(RegExp(r'(?<=[.!?])\s+')).where((s) => s.isNotEmpty).toList();
+    return text
+        .split(RegExp(r'(?<=[.!?])\s+'))
+        .where((s) => s.isNotEmpty)
+        .toList();
   }
 }

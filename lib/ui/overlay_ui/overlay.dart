@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/default_settings.dart';
 import '../../services/translator_service.dart';
 import '../../services/tts/tts_service_core.dart';
 
@@ -35,16 +36,16 @@ class _OverlayViewState extends State<OverlayView> {
 
         final action = event['action'];
         if (action == 'update_tts_modes') {
-          final sentenceIndex = event['sentence_index'] as int;
-          final wordIndex = event['word_index'] as int;
-          
-          final String apiKey = event['api_key'] as String;
-          final String elModelId = event['el_model_id'] as String;
-          final String elVoiceId = event['el_voice_id'] as String;
-          
-          final String geminiKey = event['gemini_api_key'] as String;
-          final String gemModelId = event['gemini_model_id'] as String;
-          final geminiVoiceIdx = event['gemini_voice_index'] as int;
+          final int sentenceIndex = event['sentence_index'] ?? 0;
+          final int wordIndex = event['word_index'] ?? 0;
+
+          final String apiKey = event['api_key']?.toString() ?? '';
+          final String elModelId = event['el_model_id']?.toString() ?? '';
+          final String elVoiceId = event['el_voice_id']?.toString() ?? '';
+
+          final String geminiKey = event['gemini_api_key']?.toString() ?? '';
+          final String gemModelTssId = event['gemini_model_id_tts']?.toString() ?? '';
+          final String gemVoiceName = event['gemini_voice_name']?.toString() ?? DefaultSettings.geminiDefaultVoice;
           
           setState(() {
             TtsService.sentenceMode = TtsVoiceMode.values[sentenceIndex];
@@ -55,8 +56,8 @@ class _OverlayViewState extends State<OverlayView> {
             TtsService.currentElevenLabsVoiceId = elVoiceId;
 
             TtsService.geminiApiKey = geminiKey.isEmpty ? null : geminiKey;
-            TtsService.geminiModelId = gemModelId;
-            TtsService.currentGeminiVoice = GeminiVoice.values[geminiVoiceIdx];
+            TtsService.geminiModelTextToSpeechId = gemModelTssId;
+            TtsService.currentGeminiVoice = gemVoiceName;
           });
           return;
         }
@@ -216,13 +217,13 @@ Future<void> _initOverlaySettings() async {
     TtsService.currentElevenLabsVoiceId = prefs.getString('elevenlabs_voice_id') ?? "pNInz6obpgDQGcFmaJgB";
     
     TtsService.geminiApiKey = prefs.getString('gemini_api_key');
-    TtsService.geminiModelId = prefs.getString('gemini_model_id') ?? "gemini-2.5-flash-perview-tts";
-    int gemVoiceIdx = prefs.getInt('gemini_voice') ?? GeminiVoice.zephyr.index;
+    TtsService.geminiModelTextToSpeechId = prefs.getString('gemini_model_id_tts') ?? "gemini-2.5-flash-tts-preview";
+    String gemVoiceN = prefs.getString('gemini_voice_name') ?? DefaultSettings.geminiDefaultVoice;
 
     setState(() {
       TtsService.sentenceMode = TtsVoiceMode.values[sentenceIndex];
       TtsService.wordMode = TtsVoiceMode.values[wordIndex];
-      TtsService.currentGeminiVoice = GeminiVoice.values[gemVoiceIdx];
+      TtsService.currentGeminiVoice = gemVoiceN ;
     });
   }
 
