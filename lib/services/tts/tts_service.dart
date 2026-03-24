@@ -3,11 +3,13 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:fluttertoast/fluttertoast.dart';
+// import 'package:fluttertoast/fluttertoast.dart';
 import '../../core/constants/api_endpoints.dart';
 import '../../core/constants/default_settings.dart';
 import '../../core/network/api_client.dart';
 import '../../services/tts/tts_engines.dart';
+import 'engine_modes/google_engine.dart';
+import 'engine_modes/offline_engine.dart';
 
 enum AppTtsState { idle, loading, playing, paused } 
 enum TtsVoiceMode { auto, offline, google, elevenlabs, gemini } 
@@ -98,58 +100,38 @@ class TtsService {
   // ================= MAIN ROUTING =================
   static Future<void> speak(String text, {required bool isWord}) async {
     if (text.trim().isEmpty) return;
-    if (stateNotifier.value == AppTtsState.paused) {
-      await resume(isWord: isWord);
-      return;
-    }
+    if (stateNotifier.value == AppTtsState.paused) return resume(isWord: isWord);
     if (isProcessing) return;
 
     isProcessing = true;
     lastSpokenText = text;
     stateNotifier.value = AppTtsState.loading;
-    final normalized = text.trim().toLowerCase();
-    TtsVoiceMode activeMode = isWord ? wordMode : sentenceMode;
-
+    
     try {
       await audioPlayer.stop();
       await flutterTts.stop();
 
-      if (!(await isOnline()) && activeMode != TtsVoiceMode.offline) {
-        Fluttertoast.showToast(msg: "No Internet Connection. Using Offline mode.");
-        await OfflineTtsEngine.speak(normalized);
-        return;
+      // 1. Determine the mode
+      TtsVoiceMode mode = isWord ? wordMode : sentenceMode;
+
+      // 2. Check online status
+      if (!(await isOnline()) && mode != TtsVoiceMode.offline) {
+         mode = TtsVoiceMode.offline;
       }
 
-      // REFACTORED: Routing is clean and delegates to engines
-      if (activeMode == TtsVoiceMode.auto) {
-        final wordCount = normalized.split(RegExp(r'\s+')).length;
-        if (wordCount <= 20) {
-          await GoogleTtsEngine.speak(normalized);
-        } else if (geminiApiKey != null && geminiApiKey!.isNotEmpty) {
-          await GeminiTtsEngine.speak(normalized);
-        } else if (elevenLabsApiKey != null && elevenLabsApiKey!.isNotEmpty) {
-          await ElevenLabsTtsEngine.speak(normalized);
-        } else {
-          await GoogleTtsEngine.speak(normalized);
-        }
-      } else if (activeMode == TtsVoiceMode.gemini) {
-        await GeminiTtsEngine.speak(normalized);
-      } else if (activeMode == TtsVoiceMode.elevenlabs) {
-        await ElevenLabsTtsEngine.speak(normalized);
-      } else if (activeMode == TtsVoiceMode.offline) {
-        await OfflineTtsEngine.speak(normalized);
-      } else {
-        await GoogleTtsEngine.speak(normalized);
-      }
+      // 3. GET THE ENGINE FROM FACTORY (Polymorphism)
+      final engine = TtsEngineFactory.getEngine(mode, text);
+
+      // 4. JUST CALL SPEAK (The engine knows what to do)
+      await engine.speak(text.trim().toLowerCase());
 
     } catch (e) {
-      Fluttertoast.showToast(msg: "Error occurred. Falling back to Offline.");
-      await OfflineTtsEngine.speak(normalized);
+      await OfflineTtsEngine().speak(text);
     } finally {
       isProcessing = false;
     }
   }
-
+  
   // ================= PLAYBACK CONTROLS =================
   static Future<void> pause() async {
     if (isUsingAudioPlayer) {
@@ -184,7 +166,7 @@ class TtsService {
     if (isReadingGoogle) {
       currentChunkIndex++;
       if (currentChunkIndex < googleChunks.length) {
-        GoogleTtsEngine.playNextChunk();
+        GoogleTtsEngine().playNextChunk();
         return;
       } else {
         isReadingGoogle = false;

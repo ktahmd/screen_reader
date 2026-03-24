@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/pref_keys.dart';
 import '../core/constants/default_settings.dart';
