@@ -40,7 +40,7 @@ class TtsService {
 
   // Gemini Config
   static String? geminiApiKey;
-  static String geminiModelId = "gemini-2.5-flash"; 
+  static String geminiModelId = "gemini-2.5-flash-perview-tts"; 
   static GeminiVoice currentGeminiVoice = GeminiVoice.zephyr;
 
   // ================= INIT & UTILS =================

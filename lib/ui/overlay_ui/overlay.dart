@@ -216,7 +216,7 @@ Future<void> _initOverlaySettings() async {
     TtsService.currentElevenLabsVoiceId = prefs.getString('elevenlabs_voice_id') ?? "pNInz6obpgDQGcFmaJgB";
     
     TtsService.geminiApiKey = prefs.getString('gemini_api_key');
-    TtsService.geminiModelId = prefs.getString('gemini_model_id') ?? "gemini-2.5-flash";
+    TtsService.geminiModelId = prefs.getString('gemini_model_id') ?? "gemini-2.5-flash-perview-tts";
     int gemVoiceIdx = prefs.getInt('gemini_voice') ?? GeminiVoice.zephyr.index;
 
     setState(() {

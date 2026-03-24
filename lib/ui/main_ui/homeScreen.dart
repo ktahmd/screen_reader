@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'settings/settings_screen.dart';
-import 'translate/translate.dart';
+import 'translate/translate_screen.dart';
 
 
 

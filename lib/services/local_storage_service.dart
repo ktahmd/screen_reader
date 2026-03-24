@@ -21,10 +21,10 @@ class LocalStorageService {
 
   String? getElevenLabsApiKey() => _prefs.getString(PrefKeys.elevenLabsApiKey);
   String getElevenLabsModelId() => _prefs.getString(PrefKeys.elevenLabsModelId) ?? "eleven_flash_v2_5";
-  String getElevenLabsVoiceId() => _prefs.getString(PrefKeys.elevenLabsVoiceId) ?? "pNInz6obpgDQGcFmaJgB";
+  String getElevenLabsVoiceId() => _prefs.getString(PrefKeys.elevenLabsVoiceId) ?? "pNInz6obpgDQGcFmaJgB"; //adam's voice as default
   
   String? getGeminiApiKey() => _prefs.getString(PrefKeys.geminiApiKey);
-  String getGeminiModelId() => _prefs.getString(PrefKeys.geminiModelId) ?? "gemini-2.5-flash";
+  String getGeminiModelId() => _prefs.getString(PrefKeys.geminiModelId) ?? "gemini-2.5-flash-perview-tts";
   GeminiVoice getGeminiVoice() {
       final index = _prefs.getInt(PrefKeys.geminiVoice) ?? GeminiVoice.zephyr.index;
       return GeminiVoice.values[index];

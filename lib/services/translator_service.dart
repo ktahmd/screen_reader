@@ -1,6 +1,7 @@
 import 'package:translator/translator.dart';
 
 class TranslationService {
+  //TODO: remove static and make it an instance service if needed in the future
   static final GoogleTranslator _translator = GoogleTranslator();
 
   /// Translates a given text.
@@ -12,7 +13,7 @@ class TranslationService {
       final translation = await _translator.translate(text, from: from, to: to);
       return translation.text;
     } catch (e) {
-      return "Translation error. Please check your connection.";
+      throw ("Translation failed. Check connection or API limits.");
     }
   }
 }

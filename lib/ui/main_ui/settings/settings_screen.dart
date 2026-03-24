@@ -288,7 +288,7 @@ class _GeminiConfigDialogState extends State<GeminiConfigDialog> {
         TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
         ElevatedButton(
           onPressed: () {
-            widget.settings.updateGeminiConfig(_keyController.text.trim(), _selectedModelId ?? "gemini-2.5-flash", _selectedVoice);
+            widget.settings.updateGeminiConfig(_keyController.text.trim(), _selectedModelId ?? "gemini-2.5-flash-perview-tts", _selectedVoice);
             Navigator.pop(context);
           },
           child: const Text("Save"),

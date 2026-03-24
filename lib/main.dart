@@ -6,6 +6,7 @@ import 'providers/helpers/theme_helper.dart';
 import 'providers/settings_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/overlay_provider.dart';
+import 'providers/translation_provider.dart';
 import 'services/local_storage_service.dart';
 import 'services/platform_channel_service.dart';
 import 'ui/main_ui/homeScreen.dart';
@@ -39,6 +40,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => OverlayProvider(platformChannelService),lazy: false,),
         ChangeNotifierProvider(create: (_) => SettingsProvider(localStorageService),lazy: false,),
+        //TODO: must be shared with overlay isolate in the future if we want to persist user choices in the overlay as well
+        ChangeNotifierProvider(create: (_) => TranslationProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
