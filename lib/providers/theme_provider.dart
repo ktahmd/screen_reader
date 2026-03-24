@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../helpers/theme_helper.dart';
+import 'helpers/theme_helper.dart';
 
 // class ThemeProvider with ChangeNotifier {
 //   ThemeData _themeData = ThemeData.light();

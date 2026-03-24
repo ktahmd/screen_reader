@@ -1,7 +1,7 @@
 import 'package:circle_flags/circle_flags.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/providers/overlay_provider.dart';
+import '../../../providers/overlay_provider.dart';
 import 'widget/langButton.dart';
 import 'widget/powerToggle.dart';
 

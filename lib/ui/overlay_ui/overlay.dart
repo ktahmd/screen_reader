@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../core/helpers/colors.dart';
-import '../core/services/translator_service.dart';
-import '../core/services/tts_service.dart';
+import '../../core/constants/app_colors.dart';
+import '../../services/translator_service.dart';
+import '../../services/tts/tts_service.dart';
 
 class OverlayContentWidget extends StatefulWidget {
   const OverlayContentWidget({super.key});

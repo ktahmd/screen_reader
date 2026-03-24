@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:provider/provider.dart';
-import 'package:screen_reader/core/services/tts_service.dart';
-import 'core/helpers/theme_helper.dart';
-import 'core/providers/settings_provider.dart';
-import 'core/providers/theme_provider.dart';
-import 'core/providers/overlay_provider.dart';
-import 'core/services/ocr_service.dart';
-import 'core/services/screen_capture_service.dart';
-import 'features/homeScreen.dart';
-import 'overlay/overlay.dart';
+import 'package:screen_reader/services/tts/tts_service.dart';
+import 'providers/helpers/theme_helper.dart';
+import 'providers/settings_provider.dart';
+import 'providers/theme_provider.dart';
+import 'providers/overlay_provider.dart';
+import 'services/ocr_service.dart';
+import 'services/screen_capture_service.dart';
+import 'ui/main_ui/homeScreen.dart';
+import 'ui/overlay_ui/overlay.dart';
 import 'dart:async';
 
 /// Entry point for the background isolate used by the overlay window.

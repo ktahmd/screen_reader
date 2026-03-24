@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/tts_service.dart';
+import '../services/tts/tts_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   TtsVoiceMode _sentenceMode = TtsVoiceMode.auto;

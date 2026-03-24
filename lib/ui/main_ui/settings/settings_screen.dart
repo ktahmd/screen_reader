@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
-import '../../core/providers/settings_provider.dart';
-import '../../core/services/tts_service.dart';
+import '../../../providers/settings_provider.dart';
+import '../../../services/tts/tts_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'colors.dart';
+import '../../core/constants/app_colors.dart';
 
 ThemeData appTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;

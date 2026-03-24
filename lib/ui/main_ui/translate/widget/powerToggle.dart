@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/helpers/colors.dart';
+
+import '../../../../core/constants/app_colors.dart';
 
 // ===== POWER TOGGLE =====
 class PowerToggleSection extends StatelessWidget {
