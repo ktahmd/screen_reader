@@ -34,14 +34,16 @@ class _OverlayContentWidgetState extends State<OverlayContentWidget> {
       if (event is Map) {
 
         final action = event['action'];
-if (action == 'update_tts_modes') {
+        if (action == 'update_tts_modes') {
           final sentenceIndex = event['sentence_index'] as int;
           final wordIndex = event['word_index'] as int;
           
           final String apiKey = event['api_key'] as String;
+          final String elModelId = event['el_model_id'] as String;
           final voiceIndex = event['voice_index'] as int;
           
           final String geminiKey = event['gemini_api_key'] as String;
+          final String gemModelId = event['gemini_model_id'] as String;
           final geminiVoiceIdx = event['gemini_voice_index'] as int;
           
           setState(() {
@@ -49,9 +51,11 @@ if (action == 'update_tts_modes') {
             TtsService.wordMode = TtsVoiceMode.values[wordIndex];
             
             TtsService.elevenLabsApiKey = apiKey.isEmpty ? null : apiKey;
+            TtsService.elevenLabsModelId = elModelId;
             TtsService.currentElevenLabsVoice = ElevenLabsVoice.values[voiceIndex];
 
             TtsService.geminiApiKey = geminiKey.isEmpty ? null : geminiKey;
+            TtsService.geminiModelId = gemModelId;
             TtsService.currentGeminiVoice = GeminiVoice.values[geminiVoiceIdx];
           });
           return;
@@ -207,12 +211,12 @@ Future<void> _initOverlaySettings() async {
     int sentenceIndex = prefs.getInt('sentence_mode') ?? TtsVoiceMode.auto.index;
     int wordIndex = prefs.getInt('word_mode') ?? TtsVoiceMode.offline.index;
     
-    // ElevenLabs
     TtsService.elevenLabsApiKey = prefs.getString('elevenlabs_api_key');
+    TtsService.elevenLabsModelId = prefs.getString('elevenlabs_model_id') ?? "eleven_flash_v2_5";
     int elVoiceIdx = prefs.getInt('elevenlabs_voice') ?? ElevenLabsVoice.elisabeth.index;
     
-    // Gemini
     TtsService.geminiApiKey = prefs.getString('gemini_api_key');
+    TtsService.geminiModelId = prefs.getString('gemini_model_id') ?? "gemini-2.5-flash";
     int gemVoiceIdx = prefs.getInt('gemini_voice') ?? GeminiVoice.zephyr.index;
 
     setState(() {
