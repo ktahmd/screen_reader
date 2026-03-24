@@ -3,15 +3,15 @@ import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/translator_service.dart';
-import '../../services/tts/tts_service.dart';
+import '../../services/tts/tts_service_core.dart';
 
-class OverlayContentWidget extends StatefulWidget {
-  const OverlayContentWidget({super.key});
+class OverlayView extends StatefulWidget {
+  const OverlayView({super.key});
   @override
-  State<OverlayContentWidget> createState() => _OverlayContentWidgetState();
+  State<OverlayView> createState() => _OverlayViewState();
 }
 
-class _OverlayContentWidgetState extends State<OverlayContentWidget> {
+class _OverlayViewState extends State<OverlayView> {
   bool isProcessing = false;
   bool showWords = false;
   List<dynamic> words = [];

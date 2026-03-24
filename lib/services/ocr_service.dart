@@ -1,10 +1,13 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../models/ocr_word_model.dart';
+
 class OcrService {
-  static Future<List<Map<String, dynamic>>> extractTextDetailed(Uint8List imageBytes) async {
+  static Future<List<OcrWord>> extractTextDetailed(Uint8List imageBytes) async {
     try {
       final tempDir = await getTemporaryDirectory();
       final tempFile = File('${tempDir.path}/temp_capture.png');
@@ -14,18 +17,15 @@ class OcrService {
       final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
       final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
 
-      List<Map<String, dynamic>> words = [];
+      final List<OcrWord> words = [];
 
       for (TextBlock block in recognizedText.blocks) {
         for (TextLine line in block.lines) {
           for (TextElement element in line.elements) {
-            words.add({
-              'text': element.text,
-              'x': element.boundingBox.left,
-              'y': element.boundingBox.top,
-              'w': element.boundingBox.width,
-              'h': element.boundingBox.height,
-            });
+            words.add(OcrWord(
+              text: element.text,
+              boundingBox: element.boundingBox,
+            ));
           }
         }
       }
@@ -35,6 +35,7 @@ class OcrService {
       
       return words;
     } catch (e) {
+      debugPrint("OCR Service Error: $e"); 
       return [];
     }
   }

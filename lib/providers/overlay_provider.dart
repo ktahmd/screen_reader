@@ -1,41 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
-import '../services/screen_capture_service.dart';
+import '../services/platform_channel_service.dart';
 
 class OverlayProvider extends ChangeNotifier {
+  final PlatformChannelService _platformService;
   bool _isOverlayActive = false;
   bool get isOverlayActive => _isOverlayActive;
 
-    OverlayProvider() {
-    _syncStatus(); 
+
+  OverlayProvider(this._platformService) {
+    _syncStatus();
   }
 
   Future<void> _syncStatus() async {
-    // Check with the OS if the overlay is actually running
     _isOverlayActive = await FlutterOverlayWindow.isActive();
     notifyListeners();
   }
 
-Future<void> startOverlay() async {
+  Future<void> startOverlay() async {
     try {
-      // Floating Window Permission
       final bool isOverlayGranted = await FlutterOverlayWindow.isPermissionGranted();
       if (!isOverlayGranted) {
         await FlutterOverlayWindow.requestPermission();
-        return; // Exit if permission is not granted, user needs to trigger again after granting
+        return;
       }
 
-      // MediaProjection Permission 
-      final bool isCaptureGranted = await ScreenCaptureService.requestPermission();
-      
+
+      final bool isCaptureGranted = await _platformService.requestPermission();
       if (!isCaptureGranted) {
         debugPrint("Screen capture permission was denied by the user.");
-        return; 
+        return;
       }
 
-
-
-      // 3. Show the Floating Window
       await FlutterOverlayWindow.showOverlay(
         enableDrag: true,
         overlayTitle: "Translator",
@@ -52,9 +48,11 @@ Future<void> startOverlay() async {
       debugPrint("Error starting overlay: $e");
     }
   }
+
   Future<void> closeOverlay() async {
     await FlutterOverlayWindow.closeOverlay();
-    await ScreenCaptureService.stopProjection();
+    // REFACTORED: Use the service
+    await _platformService.stopProjection();
     _isOverlayActive = false;
     notifyListeners();
   }
