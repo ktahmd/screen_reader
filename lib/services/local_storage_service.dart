@@ -8,6 +8,8 @@ class LocalStorageService {
   final SharedPreferences _prefs;
   LocalStorageService(this._prefs);
 
+  Future<void> reloadCache() async => await _prefs.reload();
+
   // ================= GETTERS =================
 
   // --- TTS Engine Modes ---

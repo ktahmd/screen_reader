@@ -55,13 +55,6 @@ class BackgroundIsolateHandler {
 
   static void _handleTtsUpdate(Map<String, dynamic> data) {
     final settings = TtsSettingsModel.fromMap(data);
-    TtsService.sentenceMode = settings.sentenceMode;
-    TtsService.wordMode = settings.wordMode;
-    TtsService.elevenLabsApiKey = settings.elevenLabsApiKey;
-    TtsService.elevenLabsModelId = settings.elevenLabsModelId;
-    TtsService.currentElevenLabsVoiceId = settings.elevenLabsVoiceId;
-    TtsService.geminiApiKey = settings.geminiApiKey;
-    TtsService.geminiModelTextToSpeechId = settings.geminiModelTextToSpeechId;
-    TtsService.currentGeminiVoice = settings.geminiVoice;
+    settings.applyToTtsService();
   }
 }

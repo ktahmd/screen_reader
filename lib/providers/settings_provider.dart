@@ -47,14 +47,18 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   void _syncToStaticTtsService() {
-    TtsService.sentenceMode = _sentenceMode;
-    TtsService.wordMode = _wordMode;
-    TtsService.elevenLabsApiKey = _elevenLabsApiKey;
-    TtsService.elevenLabsModelId = _elevenLabsModelId;
-    TtsService.currentElevenLabsVoiceId = _elevenLabsVoiceId;
-    TtsService.geminiApiKey = _geminiApiKey;
-    TtsService.geminiModelTextToSpeechId = _geminiModelTextToSpeechId;
-    TtsService.currentGeminiVoice = _geminiVoice;
+    final currentSettings = TtsSettingsModel(
+      sentenceMode: _sentenceMode,
+      wordMode: _wordMode,
+      elevenLabsApiKey: _elevenLabsApiKey,
+      elevenLabsModelId: _elevenLabsModelId,
+      elevenLabsVoiceId: _elevenLabsVoiceId,
+      geminiApiKey: _geminiApiKey,
+      geminiModelTextToSpeechId: _geminiModelTextToSpeechId,
+      geminiVoice: _geminiVoice,
+    );
+    
+    currentSettings.applyToTtsService();
   }
 
   Future<bool> updateMode(TtsVoiceMode mode, bool isWordSetting) async {

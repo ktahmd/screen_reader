@@ -55,7 +55,7 @@ class OverlayScreenProvider extends ChangeNotifier {
 
     final storage = LocalStorageService(prefs);
 
-    _applyTtsSettings(TtsSettingsModel(
+    final settings = TtsSettingsModel(
       sentenceMode: storage.getSentenceMode(),
       wordMode: storage.getWordMode(),
       elevenLabsApiKey: storage.getElevenLabsApiKey(),
@@ -64,7 +64,9 @@ class OverlayScreenProvider extends ChangeNotifier {
       geminiApiKey: storage.getGeminiApiKey(),
       geminiModelTextToSpeechId: storage.getGeminiModelTextToSpeechId(),
       geminiVoice: storage.getGeminiVoice(),
-    ));
+    );
+
+    settings.applyToTtsService();
 
     notifyListeners();
   }
@@ -88,14 +90,7 @@ class OverlayScreenProvider extends ChangeNotifier {
   }
 
   void _applyTtsSettings(TtsSettingsModel s) {
-    TtsService.sentenceMode = s.sentenceMode;
-    TtsService.wordMode = s.wordMode;
-    TtsService.elevenLabsApiKey = s.elevenLabsApiKey;
-    TtsService.elevenLabsModelId = s.elevenLabsModelId;
-    TtsService.currentElevenLabsVoiceId = s.elevenLabsVoiceId;
-    TtsService.geminiApiKey = s.geminiApiKey;
-    TtsService.geminiModelTextToSpeechId = s.geminiModelTextToSpeechId;
-    TtsService.currentGeminiVoice = s.geminiVoice;
+    s.applyToTtsService();
   }
 
   Future<void> _handleOcrResult(Map<String, dynamic> data) async {
