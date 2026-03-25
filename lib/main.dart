@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:screen_reader/backgroundhandler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/helpers/theme_helper.dart';
+import 'providers/overlay_screen_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/overlay_provider.dart';
@@ -65,9 +66,16 @@ void main() async {
 @pragma("vm:entry-point")
 void overlayMain() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MaterialApp(
-    // showPerformanceOverlay: true,
-    debugShowCheckedModeBanner: false,
-    home: OverlayView(), 
-  ));
+  
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => OverlayScreenProvider()),
+      ],
+      child: const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: OverlayScreen(),
+      ),
+    ),
+  );
 }

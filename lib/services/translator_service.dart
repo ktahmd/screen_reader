@@ -1,12 +1,11 @@
 import 'package:translator/translator.dart';
 
 class TranslationService {
-  //TODO: remove static and make it an instance service if needed in the future
-  static final GoogleTranslator _translator = GoogleTranslator();
+  final GoogleTranslator _translator = GoogleTranslator();
 
   /// Translates a given text.
   /// Defaults: English ('en') to Arabic ('ar')
-  static Future<String> translateText(String text, {String from = 'en', String to = 'ar'}) async {
+  Future<String> translateText(String text, {String from = 'en', String to = 'ar'}) async {
     try {
       if (text.trim().isEmpty) return "";
       
