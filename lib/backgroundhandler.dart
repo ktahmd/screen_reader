@@ -22,9 +22,9 @@ class BackgroundIsolateHandler {
         case OverlayActions.openAppRequest:
           platformService.openApp();
           break;
-        case OverlayActions.updateTtsModes:
-          _handleTtsUpdate(event);
-          break;
+        // case OverlayActions.updateTtsModes:
+        //   _handleTtsUpdate(event);
+        //   break;
       }
     });
   }
@@ -52,7 +52,7 @@ class BackgroundIsolateHandler {
     }
   }
 
-  static void _handleTtsUpdate(Map<String, dynamic> data) {
-    SettingsSyncService.updateLocalState(data);
-  }
+  // static void _handleTtsUpdate(Map<String, dynamic> data) {
+  //   SettingsSyncService.updateLocalState(data);
+  // }
 }

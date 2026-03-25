@@ -56,8 +56,8 @@ class SettingsProvider extends ChangeNotifier {
       geminiModelTextToSpeechId: _geminiModelTextToSpeechId,
       geminiVoice: _geminiVoice,
     );
-    
-     TtsService.updateConfiguration(settingsModel);
+
+    TtsService.updateConfiguration(settingsModel);
   }
 
   Future<bool> updateMode(TtsVoiceMode mode, bool isWordSetting) async {
@@ -110,8 +110,7 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
- Future<void> _pingOverlay() async {
-    // Send to Background and Overlay
-    await SettingsSyncService.broadcast(TtsService.config);
+  void _pingOverlay() {
+    SettingsSyncService.broadcast(TtsService.config);
   }
 }

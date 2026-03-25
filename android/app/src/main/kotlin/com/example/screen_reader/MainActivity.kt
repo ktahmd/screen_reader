@@ -15,11 +15,16 @@ class MainActivity: FlutterActivity() {
     private val REQUEST_CODE = 100
     private var pendingResult: MethodChannel.Result? = null
 
-    // This keeps the Flutter Engine from being destroyed when the app is swiped
-    override fun shouldDestroyEngineWithHost(): Boolean = false
+    // 1. THIS IS THE MAGIC! We tell the Activity to connect to the global engine!
+    override fun getCachedEngineId(): String? {
+        return "main_engine_cache"
+    }
+
+    // 2. We delete `shouldDestroyEngineWithHost` because Cached Engines are never destroyed anyway!
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine)
+        // DO NOT call super.configureFlutterEngine(flutterEngine) when using a cached engine
+        
         mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
@@ -54,7 +59,6 @@ class MainActivity: FlutterActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == REQUEST_CODE) {
             if (resultCode == Activity.RESULT_OK && data != null) {
-                // STORE TOKEN IN THE GLOBAL MANAGER
                 ScreenCaptureManager.mediaProjection = mediaProjectionManager?.getMediaProjection(resultCode, data)
                 pendingResult?.success(true) 
             } else {
