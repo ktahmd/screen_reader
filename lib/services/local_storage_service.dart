@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/pref_keys.dart';
 import '../core/constants/default_settings.dart';
@@ -43,6 +44,7 @@ class LocalStorageService {
 
   // REFACTORED: Now returns a String (voice name) instead of an enum index
   String getGeminiVoice() {
+    debugPrint("${ _prefs.getString(PrefKeys.geminiVoice)}");
     return _prefs.getString(PrefKeys.geminiVoice) ??
         DefaultSettings.geminiDefaultVoice;
   }

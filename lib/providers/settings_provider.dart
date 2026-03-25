@@ -3,7 +3,7 @@ import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import '../core/constants/overlay_actions.dart';
 import '../models/tts_config_model.dart';
 import '../services/local_storage_service.dart';
-import '../services/tts/tts_service.dart'; 
+import '../services/tts/tts_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   final LocalStorageService _storageService;
@@ -15,7 +15,7 @@ class SettingsProvider extends ChangeNotifier {
   late String _elevenLabsVoiceId;
   String? _geminiApiKey;
   late String _geminiModelTextToSpeechId;
-  late String _geminiVoice; 
+  late String _geminiVoice;
 
   TtsVoiceMode get sentenceMode => _sentenceMode;
   TtsVoiceMode get wordMode => _wordMode;
@@ -33,7 +33,7 @@ class SettingsProvider extends ChangeNotifier {
   void _loadSettings() {
     _sentenceMode = _storageService.getSentenceMode();
     _wordMode = _storageService.getWordMode();
-    
+
     _elevenLabsApiKey = _storageService.getElevenLabsApiKey();
     _elevenLabsModelId = _storageService.getElevenLabsModelId();
     _elevenLabsVoiceId = _storageService.getElevenLabsVoiceId();
@@ -45,7 +45,7 @@ class SettingsProvider extends ChangeNotifier {
     _syncToStaticTtsService();
     notifyListeners();
   }
-  
+
   void _syncToStaticTtsService() {
     TtsService.sentenceMode = _sentenceMode;
     TtsService.wordMode = _wordMode;
@@ -58,8 +58,10 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Future<bool> updateMode(TtsVoiceMode mode, bool isWordSetting) async {
-    if (mode == TtsVoiceMode.elevenlabs && (_elevenLabsApiKey == null || _elevenLabsApiKey!.isEmpty)) return false;
-    if (mode == TtsVoiceMode.gemini && (_geminiApiKey == null || _geminiApiKey!.isEmpty)) return false;
+    if (mode == TtsVoiceMode.elevenlabs &&
+        (_elevenLabsApiKey == null || _elevenLabsApiKey!.isEmpty)) return false;
+    if (mode == TtsVoiceMode.gemini &&
+        (_geminiApiKey == null || _geminiApiKey!.isEmpty)) return false;
 
     if (isWordSetting) {
       _wordMode = mode;
@@ -74,26 +76,29 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     return true;
   }
-  
-  Future<void> updateElevenLabsConfig(String key, String modelId, String voiceId) async {
+
+  Future<void> updateElevenLabsConfig(
+      String key, String modelId, String voiceId) async {
     _elevenLabsApiKey = key;
     _elevenLabsModelId = modelId;
     _elevenLabsVoiceId = voiceId;
 
     await _storageService.saveElevenLabsConfig(key, modelId, voiceId);
-    
+
     _syncToStaticTtsService();
     _pingOverlay();
     notifyListeners();
   }
-  
-  Future<void> updateGeminiConfig(String key, String modelId, String voice) async {
+
+  Future<void> updateGeminiConfig(
+      String key, String modelId, String voice) async {
+    debugPrint("vvvvvvvvvvvvvvvvvvvvvv ${voice}");
     _geminiApiKey = key;
     _geminiModelTextToSpeechId = modelId;
     _geminiVoice = voice;
 
     await _storageService.saveGeminiConfig(key, modelId, voice);
-    
+
     _syncToStaticTtsService();
     _pingOverlay();
     notifyListeners();
@@ -110,7 +115,7 @@ class SettingsProvider extends ChangeNotifier {
       geminiModelTextToSpeechId: _geminiModelTextToSpeechId,
       geminiVoice: _geminiVoice,
     );
-    
+
     await FlutterOverlayWindow.shareData({
       'action': OverlayActions.updateTtsModes,
       ...settingsModel.toMap(),

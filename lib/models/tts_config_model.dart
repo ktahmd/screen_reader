@@ -34,7 +34,7 @@ class TtsSettingsModel {
       'el_voice_id': elevenLabsVoiceId,
       'gemini_api_key': geminiApiKey ?? "",
       'gemini_model_tts_id': geminiModelTextToSpeechId,
-      'gemini_voice_name_index': geminiVoice,
+      'gemini_voice': geminiVoice,
     };
   }
 
@@ -46,8 +46,8 @@ class TtsSettingsModel {
       elevenLabsModelId: map['el_model_id'] as String,
       elevenLabsVoiceId: map['el_voice_id'] as String,
       geminiApiKey: (map['gemini_api_key'] as String).isEmpty ? null : map['gemini_api_key'],
-      geminiModelTextToSpeechId: map['gemini_model_tts_id'] as String,
-      geminiVoice: map['gemini_voice_name_name'] ?? DefaultSettings.geminiDefaultVoice,
+      geminiModelTextToSpeechId: map['gemini_model_tts_id'] as String? ?? DefaultSettings.geminiModelTextToSpeechId,
+      geminiVoice: map['gemini_voice'] ?? DefaultSettings.geminiDefaultVoice,
     );
   }
 }

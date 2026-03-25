@@ -44,7 +44,7 @@ class TtsService {
   static String? geminiApiKey;
   static String geminiModelTextToSpeechId = DefaultSettings.geminiModelTextToSpeechId;
   static String geminiModelId = DefaultSettings.geminiModelId;
-  static String currentGeminiVoice = DefaultSettings.geminiDefaultVoice;
+  static String currentGeminiVoice = DefaultSettings.geminiDefaultVoice; //default
 
   // ================= INIT =================
   static Future<void> init() async {
