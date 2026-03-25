@@ -1,9 +1,9 @@
 class ApiEndpoints {
   // ElevenLabs
-  static const String elevenLabsBase = "https://api.elevenlabs.io/v1";
-  static const String elevenLabsModels = "$elevenLabsBase/models";
-  static const String elevenLabsVoices = "$elevenLabsBase/voices";
-  static String elevenLabsTts(String voiceId) => "$elevenLabsBase/text-to-speech/$voiceId";
+  static const String elevenLabsBase = "https://api.elevenlabs.io";
+  static const String elevenLabsModels = "$elevenLabsBase/v1/models";
+  static const String elevenLabsVoices = "$elevenLabsBase/v2/voices?page_size=23";
+  static String elevenLabsTts(String voiceId) => "$elevenLabsBase/v1/text-to-speech/$voiceId";
 
   // Gemini
   static const String geminiBase = "https://generativelanguage.googleapis.com/v1beta/models";

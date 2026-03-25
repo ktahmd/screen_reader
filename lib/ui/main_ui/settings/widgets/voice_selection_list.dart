@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/default_settings.dart';
+import '../../../../models/base_voice_model.dart';
 import '../../../../services/audios/audio_preview_service.dart';
 
-class GeminiVoiceList extends StatelessWidget {
+
+class VoiceSelectionList extends StatelessWidget {
+  final List<BaseVoiceModel> voices;
   final String selectedVoiceId;
   final ValueChanged<String> onVoiceSelected;
   final AudioPreviewService previewService;
 
-  const GeminiVoiceList({
+  const VoiceSelectionList({
     super.key,
+    required this.voices,
     required this.selectedVoiceId,
     required this.onVoiceSelected,
     required this.previewService,
@@ -16,6 +19,15 @@ class GeminiVoiceList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (voices.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20.0),
+          child: Text("No voices found.", textAlign: TextAlign.center),
+        ),
+      );
+    }
+    
     return Container(
       height: 250,
       decoration: BoxDecoration(
@@ -27,10 +39,10 @@ class GeminiVoiceList extends StatelessWidget {
         builder: (context, playingId, _) {
           return ListView.separated(
             shrinkWrap: true,
-            itemCount: GeminiVoices.all.length,
+            itemCount: voices.length, 
             separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (context, index) {
-              final voice = GeminiVoices.all[index];
+              final voice = voices[index];
               final isSelected = selectedVoiceId == voice.id;
               final isPlaying = playingId == voice.id;
 

@@ -1,7 +1,13 @@
-class GeminiVoiceModel {
+import '../base_voice_model.dart';
+
+
+class GeminiVoiceModel implements BaseVoiceModel {
+  @override
   final String id;
-  final String name;        
-  final String description; 
+  @override
+  final String name;
+  @override
+  final String description;
 
   const GeminiVoiceModel({
     required this.id,
@@ -9,7 +15,7 @@ class GeminiVoiceModel {
     required this.description,
   });
 
-  // The Official Google Audio Preview URL pattern
+  @override
   String get previewUrl => 
     "https://docs.cloud.google.com/text-to-speech/docs/audio/chirp3-hd-$id.wav";
 }

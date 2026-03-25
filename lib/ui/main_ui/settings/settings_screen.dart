@@ -38,7 +38,7 @@ class SettingsScreen extends StatelessWidget {
   Widget _buildEngineList(BuildContext context, TtsVoiceMode current, bool isWord, SettingsProvider settings) {
     return SliverList(
       delegate: SliverChildListDelegate([
-        SettingsTile(title: "Auto Mode", sub: "Smart switching", icon: Icons.auto_awesome, mode: TtsVoiceMode.auto, current: current, isWord: isWord),
+        SettingsTile(title: "Auto Mode", sub: "Smart switching", icon: Icons.auto_awesome_mosaic, mode: TtsVoiceMode.auto, current: current, isWord: isWord),
         SettingsTile(title: "Offline", sub: "Fast & Data-free", icon: Icons.cloud_off, mode: TtsVoiceMode.offline, current: current, isWord: isWord),
         SettingsTile(title: isWord ? "Google TTS (Recommended)" : "Google TTS", sub: "Standard Web Voice", icon: Icons.g_translate, mode: TtsVoiceMode.google, current: current, isWord: isWord),
         
@@ -55,10 +55,10 @@ class SettingsScreen extends StatelessWidget {
         ),
         
         SettingsTile(
-          title: "Google Gemini", sub: "AI Expressive Voices", icon: Icons.auto_awesome_mosaic, mode: TtsVoiceMode.gemini, current: current, isWord: isWord,
+          title: "Google Gemini", sub: "AI Expressive Voices", icon: Icons.auto_awesome, mode: TtsVoiceMode.gemini, current: current, isWord: isWord,
           trailingWidgets: [
             IconButton(
-              icon: const Icon(Icons.settings, color: Colors.blue),
+              icon: const Icon(Icons.settings),
               onPressed: () => showDialog(context: context, builder: (_) => GeminiConfigDialog(settings: settings)),
             ),
           ],

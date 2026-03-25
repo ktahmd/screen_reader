@@ -3,7 +3,7 @@ import '../../../../core/constants/default_settings.dart';
 import '../../../../providers/settings_provider.dart';
 import '../../../../services/tts/tts_service.dart';
 import '../../../../services/audios/audio_preview_service.dart';
-import 'gemini_voice_list.dart';
+import 'voice_selection_list.dart';
 
 class GeminiConfigDialog extends StatefulWidget {
   final SettingsProvider settings;
@@ -72,7 +72,8 @@ class _GeminiConfigDialogState extends State<GeminiConfigDialog> {
                 onChanged: (val) => setState(() => _selectedModelId = val),
               ),
             const SizedBox(height: 15),
-            GeminiVoiceList(
+            VoiceSelectionList(
+              voices: GeminiVoices.all, 
               selectedVoiceId: _selectedVoiceId,
               previewService: _previewService,
               onVoiceSelected: (id) => setState(() => _selectedVoiceId = id),

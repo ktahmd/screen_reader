@@ -7,6 +7,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import '../../core/constants/api_endpoints.dart';
 import '../../core/constants/default_settings.dart';
 import '../../core/network/api_client.dart';
+import '../../models/elevenlabs_voice_model.dart';
 import '../../services/tts/tts_engines.dart';
 import 'engine_modes/google_engine.dart';
 import 'engine_modes/offline_engine.dart';
@@ -72,14 +73,18 @@ class TtsService {
     return [];
   }
 
-  static Future<List<Map<String, String>>> fetchElevenLabsVoices(String apiKey) async {
+  static Future<List<ElevenLabsVoiceModel>> fetchElevenLabsVoices(String apiKey) async {
     try {
       final res = await ApiClient.get(ApiEndpoints.elevenLabsVoices, headers: {'xi-api-key': apiKey});
       if (res.statusCode == 200) {
-        final List voices = json.decode(res.body)['voices'];
-        return voices.map<Map<String, String>>((v) => {'id': v['voice_id'].toString(), 'name': v['name'].toString()}).toList();
+        final List voicesData = json.decode(res.body)['voices'];
+        return voicesData
+            .map<ElevenLabsVoiceModel>((v) => ElevenLabsVoiceModel.fromMap(v))
+            .toList();
       }
-    } catch (e) { debugPrint("Error: $e"); }
+    } catch (e) { 
+      debugPrint("Error fetching ElevenLabs voices: $e"); 
+    }
     return [];
   }
 
