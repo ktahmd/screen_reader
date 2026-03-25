@@ -13,16 +13,20 @@ import 'google_engine.dart';
 
 class ElevenLabsTtsEngine implements ITtsEngine {
   @override
+  @override
   Future<void> speak(String text) async {
-    if (TtsService.elevenLabsApiKey == null || TtsService.elevenLabsApiKey!.isEmpty) {
+    if (TtsService.config.elevenLabsApiKey == null || TtsService.config.elevenLabsApiKey!.isEmpty) {
       Fluttertoast.showToast(msg: "API Key missing. Falling back to Google TTS.");
       await GoogleTtsEngine().speak(text);
       return;
     }
 
     TtsService.isUsingAudioPlayer = true;
-    final voiceId = TtsService.currentElevenLabsVoiceId;
-    final hash = sha256.convert(utf8.encode(text + TtsService.elevenLabsModelId + voiceId)).toString();
+    final voiceId = TtsService.config.elevenLabsVoiceId;
+    final modelId = TtsService.config.elevenLabsModelId;
+    final apiKey = TtsService.config.elevenLabsApiKey!;
+    
+    final hash = sha256.convert(utf8.encode(text + modelId + voiceId)).toString();
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/$hash.mp3');
 
@@ -35,10 +39,10 @@ class ElevenLabsTtsEngine implements ITtsEngine {
     try {
       final response = await ApiClient.post(
         ApiEndpoints.elevenLabsTts(voiceId),
-        headers: {'xi-api-key': TtsService.elevenLabsApiKey!},
+        headers: {'xi-api-key': apiKey},
         body: {
           "text": text,
-          "model_id": TtsService.elevenLabsModelId,
+          "model_id": modelId,
           "voice_settings": {"stability": 0.4, "similarity_boost": 0.75, "style": 0.1, "speed": 0.9, "use_speaker_boost": true}
         },
       );
@@ -56,7 +60,6 @@ class ElevenLabsTtsEngine implements ITtsEngine {
       await GoogleTtsEngine().speak(text);
     }
   }
-  
   @override
   Future<void> stop() async {
      await TtsService.audioPlayer.stop();

@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'core/constants/overlay_actions.dart';
 import 'models/ocr_word_model.dart';
-import 'models/tts_config_model.dart';
 import 'services/ocr_service.dart';
 import 'services/platform_channel_service.dart';
-import 'services/tts/tts_service.dart';
+import 'services/settings_sync_service.dart';
 
 class BackgroundIsolateHandler {
   static void start() {
@@ -54,7 +53,6 @@ class BackgroundIsolateHandler {
   }
 
   static void _handleTtsUpdate(Map<String, dynamic> data) {
-    final settings = TtsSettingsModel.fromMap(data);
-    settings.applyToTtsService();
+    SettingsSyncService.updateLocalState(data);
   }
 }

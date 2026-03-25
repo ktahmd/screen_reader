@@ -8,7 +8,7 @@ import '../../core/constants/overlay_actions.dart';
 import '../../models/ocr_word_model.dart';
 import '../../services/local_storage_service.dart';
 import '../../services/tts/tts_service.dart';
-import '../models/tts_config_model.dart';
+import '../services/settings_sync_service.dart';
 import '../services/translator_service.dart';
 
 class OverlayScreenProvider extends ChangeNotifier {
@@ -48,26 +48,11 @@ class OverlayScreenProvider extends ChangeNotifier {
 
   Future<void> _syncSettingsFromStorage() async {
     final prefs = await SharedPreferences.getInstance();
-
+    final storage = LocalStorageService(prefs);
     // This forces the Overlay isolate to read the fresh data
     // from the disk, ignoring its stale memory cache!
-    // await prefs.reload();
-
-    final storage = LocalStorageService(prefs);
-
-    final settings = TtsSettingsModel(
-      sentenceMode: storage.getSentenceMode(),
-      wordMode: storage.getWordMode(),
-      elevenLabsApiKey: storage.getElevenLabsApiKey(),
-      elevenLabsModelId: storage.getElevenLabsModelId(),
-      elevenLabsVoiceId: storage.getElevenLabsVoiceId(),
-      geminiApiKey: storage.getGeminiApiKey(),
-      geminiModelTextToSpeechId: storage.getGeminiModelTextToSpeechId(),
-      geminiVoice: storage.getGeminiVoice(),
-    );
-
-    settings.applyToTtsService();
-
+    await prefs.reload();
+    TtsService.updateConfiguration(storage.getAllSettings());
     notifyListeners();
   }
 
@@ -85,13 +70,10 @@ class OverlayScreenProvider extends ChangeNotifier {
   }
 
   void _handleSettingsUpdate(Map<String, dynamic> data) {
-    _applyTtsSettings(TtsSettingsModel.fromMap(data));
+    SettingsSyncService.updateLocalState(data);
     notifyListeners();
   }
 
-  void _applyTtsSettings(TtsSettingsModel s) {
-    s.applyToTtsService();
-  }
 
   Future<void> _handleOcrResult(Map<String, dynamic> data) async {
     await FlutterOverlayWindow.moveOverlay(const OverlayPosition(0, 0));

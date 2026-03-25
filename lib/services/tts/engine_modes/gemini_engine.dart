@@ -16,18 +16,17 @@ import 'google_engine.dart';
 class GeminiTtsEngine implements ITtsEngine {
   @override
   Future<void> speak(String text) async {
-    if (TtsService.geminiApiKey == null || TtsService.geminiApiKey!.isEmpty) {
+    if (TtsService.config.geminiApiKey == null || TtsService.config.geminiApiKey!.isEmpty) {
       Fluttertoast.showToast(msg: "Gemini API Key missing. Falling back.");
       return GoogleTtsEngine().speak(text);
     }
 
     TtsService.isUsingAudioPlayer = true;
-    final String voiceName = TtsService.currentGeminiVoice.replaceFirst(
-        TtsService.currentGeminiVoice[0],
-        TtsService.currentGeminiVoice[0].toUpperCase());
+    final String voiceName = TtsService.config.geminiVoice.replaceFirst(
+        TtsService.config.geminiVoice[0],
+        TtsService.config.geminiVoice[0].toUpperCase());
 
-    final hash =
-        sha256.convert(utf8.encode("${text}gemini_$voiceName")).toString();
+    final hash = sha256.convert(utf8.encode("${text}gemini_$voiceName")).toString();
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/$hash.wav');
 
@@ -36,33 +35,20 @@ class GeminiTtsEngine implements ITtsEngine {
       return;
     }
 
-    final url = ApiEndpoints.geminiTts(
-        TtsService.geminiModelTextToSpeechId, TtsService.geminiApiKey!);
+    final url = ApiEndpoints.geminiTts(TtsService.config.geminiModelTextToSpeechId, TtsService.config.geminiApiKey!);
 
     try {
       final response = await ApiClient.post(url, body: {
-        "contents": [
-          {
-            "role": "user",
-            "parts": [
-              {"text": text}
-            ]
-          }
-        ],
+        "contents": [{"role": "user", "parts": [{"text": text}]}],
         "generationConfig": {
           "responseModalities": ["audio"],
-          "speech_config": {
-            "voice_config": {
-              "prebuilt_voice_config": {"voice_name": voiceName}
-            }
-          }
+          "speech_config": {"voice_config": {"prebuilt_voice_config": {"voice_name": voiceName}}}
         }
       });
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final base64Audio =
-            data['candidates'][0]['content']['parts'][0]['inlineData']['data'];
+        final base64Audio = data['candidates'][0]['content']['parts'][0]['inlineData']['data'];
 
         Uint8List pcmBytes = base64Decode(base64Audio);
         Uint8List wavBytes = AudioUtils.addWavHeader(pcmBytes);
@@ -78,7 +64,6 @@ class GeminiTtsEngine implements ITtsEngine {
       await GoogleTtsEngine().speak(text);
     }
   }
-
   Future<void> _playFile(String path) async {
     TtsService.stateNotifier.value = AppTtsState.playing;
     await TtsService.audioPlayer.play(DeviceFileSource(path));

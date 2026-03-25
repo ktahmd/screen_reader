@@ -54,14 +54,4 @@ class TtsSettingsModel {
     );
   }
 
-  void applyToTtsService() {
-    TtsService.sentenceMode = sentenceMode;
-    TtsService.wordMode = wordMode;
-    TtsService.elevenLabsApiKey = elevenLabsApiKey;
-    TtsService.elevenLabsModelId = elevenLabsModelId;
-    TtsService.currentElevenLabsVoiceId = elevenLabsVoiceId;
-    TtsService.geminiApiKey = geminiApiKey;
-    TtsService.geminiModelTextToSpeechId = geminiModelTextToSpeechId;
-    TtsService.currentGeminiVoice = geminiVoice;
-  }
 }

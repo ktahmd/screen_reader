@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_overlay_window/flutter_overlay_window.dart';
-import '../core/constants/overlay_actions.dart';
 import '../models/tts_config_model.dart';
 import '../services/local_storage_service.dart';
+import '../services/settings_sync_service.dart';
 import '../services/tts/tts_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
@@ -47,7 +46,7 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   void _syncToStaticTtsService() {
-    final currentSettings = TtsSettingsModel(
+    final settingsModel = TtsSettingsModel(
       sentenceMode: _sentenceMode,
       wordMode: _wordMode,
       elevenLabsApiKey: _elevenLabsApiKey,
@@ -58,7 +57,7 @@ class SettingsProvider extends ChangeNotifier {
       geminiVoice: _geminiVoice,
     );
     
-    currentSettings.applyToTtsService();
+     TtsService.updateConfiguration(settingsModel);
   }
 
   Future<bool> updateMode(TtsVoiceMode mode, bool isWordSetting) async {
@@ -111,21 +110,8 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _pingOverlay() async {
-    final settingsModel = TtsSettingsModel(
-      sentenceMode: _sentenceMode,
-      wordMode: _wordMode,
-      elevenLabsApiKey: _elevenLabsApiKey,
-      elevenLabsModelId: _elevenLabsModelId,
-      elevenLabsVoiceId: _elevenLabsVoiceId,
-      geminiApiKey: _geminiApiKey,
-      geminiModelTextToSpeechId: _geminiModelTextToSpeechId,
-      geminiVoice: _geminiVoice,
-    );
-
-    await FlutterOverlayWindow.shareData({
-      'action': OverlayActions.updateTtsModes,
-      ...settingsModel.toMap(),
-    });
+ Future<void> _pingOverlay() async {
+    // Send to Background and Overlay
+    await SettingsSyncService.broadcast(TtsService.config);
   }
 }

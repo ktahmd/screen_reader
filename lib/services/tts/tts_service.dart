@@ -3,10 +3,9 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-// import 'package:fluttertoast/fluttertoast.dart';
 import '../../core/constants/api_endpoints.dart';
-import '../../core/constants/default_settings.dart';
 import '../../core/network/api_client.dart';
+import '../../models/tts_config_model.dart';
 import '../../models/voices/elevenlabs_voice_model.dart';
 import '../../services/tts/tts_engines.dart';
 import 'engine_modes/google_engine.dart';
@@ -16,6 +15,9 @@ enum AppTtsState { idle, loading, playing, paused }
 enum TtsVoiceMode { auto, offline, google, elevenlabs, gemini } 
 
 class TtsService {
+  
+  static late TtsSettingsModel config;
+
   // --- Core Dependencies ---
   static final AudioPlayer audioPlayer = AudioPlayer();
   static final FlutterTts flutterTts = FlutterTts();
@@ -32,20 +34,6 @@ class TtsService {
   static int currentChunkIndex = 0;
   static bool isReadingGoogle = false;
 
-  // --- Global Configurations ---
-  static TtsVoiceMode sentenceMode = TtsVoiceMode.auto;
-  static TtsVoiceMode wordMode = TtsVoiceMode.offline;
-
-  // ElevenLabs Config
-  static String? elevenLabsApiKey;
-  static String elevenLabsModelId = DefaultSettings.elevenLabsModelId;
-  static String currentElevenLabsVoiceId = DefaultSettings.elevenLabsVoiceId;
-
-  // Gemini Config
-  static String? geminiApiKey;
-  static String geminiModelTextToSpeechId = DefaultSettings.geminiModelTextToSpeechId;
-  static String geminiModelId = DefaultSettings.geminiModelId;
-  static String currentGeminiVoice = DefaultSettings.geminiDefaultVoice; //default
 
   // ================= INIT =================
   static Future<void> init() async {
@@ -58,6 +46,11 @@ class TtsService {
   static Future<bool> isOnline() async {
     var result = await _connectivity.checkConnectivity();
     return !result.contains(ConnectivityResult.none);
+  }
+
+  // ================= Config =================
+  static void updateConfiguration(TtsSettingsModel newConfig) {
+    config = newConfig;
   }
 
   // ================= FETCH DYNAMIC DATA =================
@@ -117,7 +110,7 @@ class TtsService {
       await flutterTts.stop();
 
       // 1. Determine the mode
-      TtsVoiceMode mode = isWord ? wordMode : sentenceMode;
+      TtsVoiceMode mode = isWord ? config.wordMode : config.sentenceMode;
 
       // 2. Check online status
       if (!(await isOnline()) && mode != TtsVoiceMode.offline) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/pref_keys.dart';
 import '../core/constants/default_settings.dart';
+import '../models/tts_config_model.dart';
 import 'tts/tts_service.dart';
 
 class LocalStorageService {
@@ -11,7 +12,18 @@ class LocalStorageService {
   Future<void> reloadCache() async => await _prefs.reload();
 
   // ================= GETTERS =================
-
+  TtsSettingsModel getAllSettings() {
+    return TtsSettingsModel(
+      sentenceMode: getSentenceMode(),
+      wordMode: getWordMode(),
+      elevenLabsApiKey: getElevenLabsApiKey(),
+      elevenLabsModelId: getElevenLabsModelId(),
+      elevenLabsVoiceId: getElevenLabsVoiceId(),
+      geminiApiKey: getGeminiApiKey(),
+      geminiModelTextToSpeechId: getGeminiModelTextToSpeechId(),
+      geminiVoice: getGeminiVoice(),
+    );
+  }
   // --- TTS Engine Modes ---
   TtsVoiceMode getSentenceMode() {
     final index =

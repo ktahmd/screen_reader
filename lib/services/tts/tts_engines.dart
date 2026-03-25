@@ -26,8 +26,8 @@ class TtsEngineFactory {
   static ITtsEngine _getAutoEngine(String text) {
     final wordCount = text.split(RegExp(r'\s+')).length;
     if (wordCount <= 20) return GoogleTtsEngine();
-    if (TtsService.geminiApiKey != null) return GeminiTtsEngine();
-    if (TtsService.elevenLabsApiKey != null) return ElevenLabsTtsEngine();
+    if (TtsService.config.geminiApiKey != null) return GeminiTtsEngine();
+    if (TtsService.config.elevenLabsApiKey != null) return ElevenLabsTtsEngine();
     return GoogleTtsEngine();
   }
 }
