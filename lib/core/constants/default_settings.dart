@@ -1,4 +1,4 @@
-import '../../models/gemini_voice_model.dart';
+import '../../models/voices/gemini_voice_model.dart';
 
 class DefaultSettings {
   // ElevenLabs Defaults
