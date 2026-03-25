@@ -17,7 +17,7 @@ class CaptureButton extends StatelessWidget {
       height: 60,
       child: Center(
         child: GestureDetector(
-          onDoubleTap: provider.isProcessing ? null : provider.performCapture,
+          onTap: provider.isProcessing ? null : provider.performCapture,
           child: Container(
             width: 40,
             height: 40,

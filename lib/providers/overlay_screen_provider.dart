@@ -83,7 +83,6 @@ class OverlayScreenProvider extends ChangeNotifier {
   }
 
   void _handleSettingsUpdate(Map<String, dynamic> data) {
-    debugPrint("DDDDDDDDDDDDDDDD ${data}");
     _applyTtsSettings(TtsSettingsModel.fromMap(data));
     notifyListeners();
   }
@@ -101,6 +100,8 @@ class OverlayScreenProvider extends ChangeNotifier {
 
   Future<void> _handleOcrResult(Map<String, dynamic> data) async {
     await FlutterOverlayWindow.moveOverlay(const OverlayPosition(0, 0));
+    //TODO: i think i can resize this to the image size so no need for the customs pixelRatio
+    //i will think about this
     await FlutterOverlayWindow.resizeOverlay(-1, -1, false);
 
     final List<dynamic> rawWords = data['words'];

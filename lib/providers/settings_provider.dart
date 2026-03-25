@@ -59,9 +59,13 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<bool> updateMode(TtsVoiceMode mode, bool isWordSetting) async {
     if (mode == TtsVoiceMode.elevenlabs &&
-        (_elevenLabsApiKey == null || _elevenLabsApiKey!.isEmpty)) return false;
+        (_elevenLabsApiKey == null || _elevenLabsApiKey!.isEmpty)) {
+      return false;
+    }
     if (mode == TtsVoiceMode.gemini &&
-        (_geminiApiKey == null || _geminiApiKey!.isEmpty)) return false;
+        (_geminiApiKey == null || _geminiApiKey!.isEmpty)) {
+      return false;
+    }
 
     if (isWordSetting) {
       _wordMode = mode;
@@ -92,7 +96,6 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> updateGeminiConfig(
       String key, String modelId, String voice) async {
-    debugPrint("vvvvvvvvvvvvvvvvvvvvvv ${voice}");
     _geminiApiKey = key;
     _geminiModelTextToSpeechId = modelId;
     _geminiVoice = voice;

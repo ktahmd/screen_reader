@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
@@ -26,7 +25,6 @@ class GeminiTtsEngine implements ITtsEngine {
     final String voiceName = TtsService.currentGeminiVoice.replaceFirst(
         TtsService.currentGeminiVoice[0],
         TtsService.currentGeminiVoice[0].toUpperCase());
-    debugPrint("CCCCCCCCCCCCCCCCCCCC ${voiceName} and ${TtsService.currentGeminiVoice},${TtsService.currentGeminiVoice[0].toUpperCase()} ");
 
     final hash =
         sha256.convert(utf8.encode("${text}gemini_$voiceName")).toString();
