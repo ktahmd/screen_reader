@@ -8,7 +8,8 @@ import '../../core/constants/overlay_actions.dart';
 import '../../models/ocr_word_model.dart';
 import '../../services/local_storage_service.dart';
 import '../../services/tts/tts_service.dart';
-import '../services/settings_sync_service.dart';
+import '../models/tts_config_model.dart';
+import '../services/share_data_service.dart';
 import '../services/translator_service.dart';
 
 class OverlayScreenProvider extends ChangeNotifier {
@@ -43,7 +44,7 @@ class OverlayScreenProvider extends ChangeNotifier {
   Future<void> _initProvider() async {
     await _syncSettingsFromStorage();
     await TtsService.init();
-    _listenToMainApp();
+    _listenToMessages();
   }
 
   Future<void> _syncSettingsFromStorage() async {
@@ -58,19 +59,31 @@ class OverlayScreenProvider extends ChangeNotifier {
 
   // ==================== STREAM LISTENERS ====================
 
-  void _listenToMainApp() {
-    FlutterOverlayWindow.overlayListener.listen((event) {
+  void _listenToMessages() {
+    OverlayShareDataService.messageStream.listen((event) {
       if (event is! Map<String, dynamic>) return;
       final action = event['action'];
 
-      if (action == OverlayActions.updateTtsModes) _handleSettingsUpdate(event);
-      if (action == OverlayActions.result) _handleOcrResult(event);
-      if (action == OverlayActions.error) _handleError(event);
+      switch (action) {
+        case OverlayActions.updateTtsModes:
+          TtsService.updateConfiguration(TtsSettingsModel.fromMap(event));
+          notifyListeners();
+          break;
+        case OverlayActions.result:
+          _handleOcrResult(event);
+          break;
+        case OverlayActions.error:
+          _handleError(event);
+          break;
+      }
     });
   }
 
-  void _handleSettingsUpdate(Map<String, dynamic> data) {
-    SettingsSyncService.updateLocalState(data);
+  void performCapture() {
+    isProcessing = true;
+    errorCode = null;
+    clearSelection();
+    OverlayShareDataService.requestCapture();
     notifyListeners();
   }
 
@@ -99,13 +112,6 @@ class OverlayScreenProvider extends ChangeNotifier {
   }
 
   // ==================== USER ACTIONS ====================
-
-  void performCapture() {
-    isProcessing = true;
-    errorCode = null;
-    clearSelection();
-    FlutterOverlayWindow.shareData({'action': OverlayActions.capture});
-  }
 
   Future<void> closeOverlay() async {
     await TtsService.stop();

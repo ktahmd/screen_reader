@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/tts_config_model.dart';
 import '../services/local_storage_service.dart';
-import '../services/settings_sync_service.dart';
+import '../services/share_data_service.dart';
 import '../services/tts/tts_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
@@ -110,7 +110,7 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _pingOverlay() {
-    SettingsSyncService.broadcast(TtsService.config);
+void _pingOverlay() {
+    OverlayShareDataService.broadcastSettings(TtsService.config);
   }
 }
