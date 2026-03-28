@@ -26,7 +26,7 @@ class OverlayScreenProvider extends ChangeNotifier {
   // Word & Selection State
   List<OcrWord> words = [];
   Set<int> selectedWordIndices = {};
-  Set<int> dragSelectedIndices = {};
+  Set<int> dragIndices = {};
   Offset? dragStart;
   Offset? dragCurrent;
 
@@ -88,6 +88,8 @@ class OverlayScreenProvider extends ChangeNotifier {
   }
 
 
+  // ==================== OCR ====================
+
   Future<void> _handleOcrResult(Map<String, dynamic> data) async {
     await FlutterOverlayWindow.moveOverlay(const OverlayPosition(0, 0));
     //TODO: i think i can resize this to the image size so no need for the customs pixelRatio
@@ -111,6 +113,28 @@ class OverlayScreenProvider extends ChangeNotifier {
     await FlutterOverlayWindow.resizeOverlay(350, 250, true);
   }
 
+  int? _findWordIndexAt(Offset localPosition, double pixelRatio) {
+    for (int i = 0; i < words.length; i++) {
+      if (words[i].containsPoint(localPosition, pixelRatio)) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  void handleTapAt(Offset localPosition, double pixelRatio) {
+    final index = _findWordIndexAt(localPosition, pixelRatio);
+    if (index != null) {
+      // If tapping a new word, clear and select only that one (standard behavior)
+      // Or call toggleWordSelection(index) if you want multi-tap selection
+      selectedWordIndices.clear(); 
+      selectedWordIndices.add(index);
+      _processSelection();
+    } else {
+      clearSelection();
+    }
+  }
+
   // ==================== USER ACTIONS ====================
 
   Future<void> closeOverlay() async {
@@ -131,7 +155,7 @@ class OverlayScreenProvider extends ChangeNotifier {
     TtsService.stop();
     isExpanded = false;
     selectedWordIndices.clear();
-    dragSelectedIndices.clear();
+    dragIndices.clear();
     dragStart = null;
     dragCurrent = null;
     currentOriginalText = "";
@@ -166,7 +190,7 @@ class OverlayScreenProvider extends ChangeNotifier {
     clearSelection();
     dragStart = position;
     dragCurrent = position;
-    dragSelectedIndices.clear();
+    dragIndices.clear();
     notifyListeners();
   }
 
@@ -185,16 +209,16 @@ class OverlayScreenProvider extends ChangeNotifier {
           tempDragSelection.add(i);
         }
       }
-      dragSelectedIndices = tempDragSelection;
+      dragIndices = tempDragSelection;
     }
     notifyListeners();
   }
 
   void handlePanEnd() {
-    selectedWordIndices.addAll(dragSelectedIndices);
+    selectedWordIndices.addAll(dragIndices);
     dragStart = null;
     dragCurrent = null;
-    dragSelectedIndices.clear();
+    dragIndices.clear();
     _processSelection();
   }
 

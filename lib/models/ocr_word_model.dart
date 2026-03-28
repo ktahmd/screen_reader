@@ -36,4 +36,8 @@ class OcrWord {
       boundingBox.height / pixelRatio + 6,
     );
   }
+
+  bool containsPoint(Offset localPoint, double pixelRatio) {
+    return getAdjustedRect(pixelRatio).contains(localPoint);
+  }
 }
